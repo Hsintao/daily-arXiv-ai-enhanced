@@ -30,6 +30,37 @@ class BuildChatOpenAIKwargsTests(unittest.TestCase):
             kwargs["extra_body"],
         )
 
+    def test_deepseek_configuration_disables_thinking_with_extra_body(self):
+        """Catches the HTTP 400 'Thinking mode does not support this tool_choice' outage.
+
+        DeepSeek enables thinking by default, which rejects the
+        function_calling tool_choice used by with_structured_output unless
+        thinking is explicitly disabled.
+        """
+        kwargs = build_chat_openai_kwargs(
+            model_name="deepseek-flash",
+            base_url="https://api.deepseek.com",
+            api_key="sk-test-key",
+        )
+
+        self.assertEqual(
+            {"thinking": {"type": "disabled"}},
+            kwargs["extra_body"],
+        )
+
+    def test_deepseek_base_url_with_path_also_disables_thinking(self):
+        """Catches the /v1 suffix bypassing the provider check."""
+        kwargs = build_chat_openai_kwargs(
+            model_name="deepseek-flash",
+            base_url="https://api.deepseek.com/v1",
+            api_key="sk-test-key",
+        )
+
+        self.assertEqual(
+            {"thinking": {"type": "disabled"}},
+            kwargs["extra_body"],
+        )
+
     def test_processing_error_is_reported_after_a_batch(self):
         """Catches swallowing authentication failures and publishing fallback summaries."""
         with self.assertRaisesRegex(RuntimeError, r"2 paper\(s\) failed"):

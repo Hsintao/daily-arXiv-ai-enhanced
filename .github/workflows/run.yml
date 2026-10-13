@@ -21,6 +21,18 @@ jobs:
         curl -LsSf https://astral.sh/uv/install.sh | sh
         uv sync
         
+    # Fail fast: a misconfigured model would otherwise waste the full crawl
+    # and only surface as an error in the AI step below.
+    - name: Pre-flight LLM check
+      run: |
+        source .venv/bin/activate
+        export OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+        export OPENAI_BASE_URL=${{ secrets.OPENAI_BASE_URL }}
+        export MODEL_NAME="${{ vars.MODEL_NAME }}"
+        
+        cd ai
+        python preflight.py
+        
     - name: Crawl arXiv papers
       id: crawl_step
       run: |
