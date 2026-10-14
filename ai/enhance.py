@@ -10,6 +10,7 @@ import dotenv
 import argparse
 from tqdm import tqdm
 
+from pydantic import ValidationError
 import langchain_core.exceptions
 from langchain_openai import ChatOpenAI
 from langchain.prompts import (
@@ -125,6 +126,27 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
         # Merge partial data with defaults to ensure all fields exist
         item['AI'] = {**default_ai_fields, **partial_data}
         print(f"Using partial AI data for {item.get('id', 'unknown')}: {list(partial_data.keys())}", file=sys.stderr)
+    except ValidationError as e:
+        # The model returned valid JSON but omitted required fields -- typically
+        # because generation was truncated on a very long abstract. Recover the
+        # fields it did produce and fill the rest with defaults, rather than
+        # discarding the whole (expensive) batch over one bad response.
+        #
+        # Note: only str(e) truncates long values; e.errors()[i]["input"] holds
+        # the full untruncated dict, so read from there.
+        partial_data = {}
+        for error in e.errors():
+            value = error.get("input")
+            if isinstance(value, dict):
+                partial_data.update(value)
+
+        item['AI'] = {**default_ai_fields, **partial_data}
+        missing = [f for f in default_ai_fields if f not in partial_data]
+        print(
+            f"Model omitted {missing} for {item.get('id', 'unknown')}; "
+            f"recovered {list(partial_data.keys())} (abstract may be too long)",
+            file=sys.stderr,
+        )
     except Exception as e:
         print(f"Unexpected error for {item.get('id', 'unknown')}: {e}", file=sys.stderr)
         raise RuntimeError(f"AI request failed for {item.get('id', 'unknown')}") from e
@@ -142,12 +164,28 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
 
 def process_all_items(data: List[Dict], model_name: str, language: str, max_workers: int) -> List[Dict]:
     """并行处理所有数据项"""
+    # Cap output length so a long abstract cannot cause a truncated (and thus
+    # schema-invalid) response. Overridable without a code change.
+    max_tokens_env = os.environ.get("MAX_TOKENS", "").strip()
+    extra = {}
+    if max_tokens_env:
+        try:
+            extra["max_tokens"] = int(max_tokens_env)
+        except ValueError:
+            print(
+                f"Ignoring invalid MAX_TOKENS={max_tokens_env!r}",
+                file=sys.stderr,
+            )
+    else:
+        extra["max_tokens"] = 4096
+
     llm = ChatOpenAI(
         **build_chat_openai_kwargs(
             model_name=model_name,
             base_url=os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
             api_key=os.environ.get("OPENAI_API_KEY", ""),
-        )
+        ),
+        **extra,
     ).with_structured_output(Structure, method="function_calling")
 
     print('Connect to:', model_name, file=sys.stderr)
