@@ -1,0 +1,161 @@
+# One-off (re-runnable) workflow: run AI enhancement over backfilled history.
+#
+# The daily job only ever processes today's crawl. When historical days are
+# added to the data branch (see tools/backfill_arxiv.py), their raw *.jsonl
+# files have no AI summaries yet, so the site would fall back to showing the
+# English abstract instead of a Chinese summary.
+#
+# This workflow processes those raw files in place: for every data/<date>.jsonl
+# that has no matching <date>_AI_enhanced_<LANGUAGE>.jsonl, it runs enhance.py
+# and commits the result to the data branch.
+#
+# Dispatch it manually. It processes one day per run by default so a single
+# failure cannot lose an hour of work; set ALL_DAYS=true to loop over every
+# pending day sequentially.
+
+name: Backfill AI enhancement
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "How many pending days to process in this run (0 = all)"
+        required: false
+        default: "1"
+      only_date:
+        description: "Process just this date (YYYY-MM-DD). Overrides 'days'."
+        required: false
+        default: ""
+      max_workers:
+        description: "Parallel workers for enhance.py"
+        required: false
+        default: "8"
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout data branch
+        uses: actions/checkout@v4
+        with:
+          ref: data
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          uv sync
+
+      - name: Determine pending days
+        id: pending
+        run: |
+          LANGUAGE="${{ vars.LANGUAGE }}"
+          LANGUAGE="${LANGUAGE:-Chinese}"
+
+          if [ -n "${{ inputs.only_date }}" ]; then
+            if [ ! -f "data/${{ inputs.only_date }}.jsonl" ]; then
+              echo "❌ data/${{ inputs.only_date }}.jsonl not found"
+              exit 1
+            fi
+            echo "${{ inputs.only_date }}" > /tmp/pending.txt
+          else
+            # A day is pending when its raw file exists but the AI-enhanced
+            # file for the configured language does not.
+            for f in data/*.jsonl; do
+              base=$(basename "$f" .jsonl)
+              case "$base" in
+                *_AI_enhanced_*) continue ;;   # already an output file
+              esac
+              if [ ! -f "data/${base}_AI_enhanced_${LANGUAGE}.jsonl" ]; then
+                echo "$base"
+              fi
+            done | sort > /tmp/pending.txt
+          fi
+
+          TOTAL=$(wc -l < /tmp/pending.txt)
+          LIMIT="${{ inputs.days }}"
+          if [ -z "$LIMIT" ] || [ "$LIMIT" = "0" ]; then
+            LIMIT=$TOTAL
+          fi
+          head -n "$LIMIT" /tmp/pending.txt > /tmp/todo.txt
+
+          echo "待处理天数(全部) / pending total: $TOTAL"
+          echo "本次处理 / this run: $(wc -l < /tmp/todo.txt)"
+          cat /tmp/todo.txt
+
+          echo "count=$(wc -l < /tmp/todo.txt)" >> $GITHUB_OUTPUT
+
+      - name: Run AI enhancement
+        if: steps.pending.outputs.count != '0'
+        run: |
+          source .venv/bin/activate
+          LANGUAGE="${{ vars.LANGUAGE }}"
+          LANGUAGE="${LANGUAGE:-Chinese}"
+
+          export OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          export OPENAI_BASE_URL=${{ secrets.OPENAI_BASE_URL }}
+          export MODEL_NAME="${{ vars.MODEL_NAME }}"
+          export LANGUAGE
+          # Explicitly disable the third-party content filter for historical
+          # backfill: these runs issue thousands of requests, and the upstream
+          # worker is someone else's private infrastructure. New daily content
+          # still goes through the normal path.
+          export FILTER_URL_DISABLED="${{ vars.BACKFILL_DISABLE_FILTER }}"
+          export FILTER_URL_DISABLED="${FILTER_URL_DISABLED:-true}"
+
+          echo "内容过滤 / Content filter: disabled=${FILTER_URL_DISABLED}"
+
+          cd ai
+          while read -r day; do
+            [ -z "$day" ] && continue
+            echo "=================================================="
+            echo "处理 / Processing: $day"
+            echo "=================================================="
+            python enhance.py \
+              --data "../data/${day}.jsonl" \
+              --max_workers "${{ inputs.max_workers }}"
+          done < /tmp/todo.txt
+
+      - name: Commit results to data branch
+        if: steps.pending.outputs.count != '0'
+        run: |
+          git config user.email "${{ vars.EMAIL }}"
+          git config user.name "${{ vars.NAME }}"
+
+          LANGUAGE="${{ vars.LANGUAGE }}"
+          LANGUAGE="${LANGUAGE:-Chinese}"
+
+          # Rebuild the file list exactly as the daily workflow does, so newly
+          # enhanced days appear in the site's date picker.
+          ls data/*.jsonl | sed 's|data/||' | sort > assets/file-list.txt
+          git add data/*.jsonl assets/file-list.txt
+
+          if git diff --staged --quiet; then
+            echo "没有变更需要提交 / No changes to commit"
+          else
+            DAYS=$(tr '\n' ' ' < /tmp/todo.txt)
+            git commit -m "data: AI-enhance backfilled days (${DAYS})"
+            echo "已提交 / Committed"
+          fi
+
+      - name: Push to data branch
+        if: steps.pending.outputs.count != '0'
+        run: |
+          for i in 1 2 3; do
+            if git push origin data; then
+              echo "推送成功 / Pushed"
+              break
+            fi
+            echo "推送失败,拉取重试 / Push failed, pulling"
+            git pull origin data --no-edit --rebase || true
+            if [ $i -eq 3 ]; then
+              echo "3 次尝试后失败 / Failed after 3 attempts"
+              exit 1
+            fi
+          done
+
+      - name: Summary
+        run: |
+          echo "本次处理天数 / days processed: ${{ steps.pending.outputs.count }}"
+          echo "剩余待处理 / remaining: $(wc -l < /tmp/pending.txt)"
