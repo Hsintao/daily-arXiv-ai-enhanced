@@ -481,18 +481,21 @@ function showNotification(message, type = 'success') {
 }
 
 // 获取GitHub统计数据
+// GitHub 按钮（star/fork 徽章）已从界面移除，不再需要拉取统计数据。
+// 保留调用点不变，但元素缺失时直接返回，避免对 null 取 textContent 报错。
 async function fetchGitHubStats() {
+  const starEl = document.getElementById('starCount');
+  const forkEl = document.getElementById('forkCount');
+  if (!starEl || !forkEl) return;
+
   try {
     const response = await fetch('https://api.github.com/repos/dw-dengwei/daily-arXiv-ai-enhanced');
     const data = await response.json();
-    const starCount = data.stargazers_count;
-    const forkCount = data.forks_count;
-    
-    document.getElementById('starCount').textContent = starCount;
-    document.getElementById('forkCount').textContent = forkCount;
+    starEl.textContent = data.stargazers_count;
+    forkEl.textContent = data.forks_count;
   } catch (error) {
     console.error('获取GitHub统计数据失败:', error);
-    document.getElementById('starCount').textContent = '?';
-    document.getElementById('forkCount').textContent = '?';
+    starEl.textContent = '?';
+    forkEl.textContent = '?';
   }
 } 

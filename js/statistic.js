@@ -3,6 +3,35 @@ let availableDates = [];
 let paperData = {};
 let flatpickrInstance = null;
 let isRangeMode = false;
+
+// flatpickr 的 CDN 默认包只带 en/default，没有中文；这里内联一份 zh 本地化，
+// 避免再引入一个额外的语言包请求。月份/星期/无障碍标签一并中文化。
+const FLATPICKR_ZH = {
+  weekdays: {
+    shorthand: ['日', '一', '二', '三', '四', '五', '六'],
+    longhand: ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
+  },
+  months: {
+    shorthand: ['1月', '2月', '3月', '4月', '5月', '6月',
+                '7月', '8月', '9月', '10月', '11月', '12月'],
+    longhand: ['一月', '二月', '三月', '四月', '五月', '六月',
+               '七月', '八月', '九月', '十月', '十一月', '十二月']
+  },
+  daysInMonth: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+  firstDayOfWeek: 1, // 中文习惯以周一为一周开始
+  ordinal: (nth) => `${nth}日`,
+  rangeSeparator: ' 至 ',
+  weekAbbreviation: '周',
+  scrollTitle: '滚动切换',
+  toggleTitle: '点击切换',
+  amPM: ['上午', '下午'],
+  yearAriaLabel: '年',
+  monthAriaLabel: '月',
+  hourAriaLabel: '时',
+  minuteAriaLabel: '分',
+  time_24hr: true
+};
+
 let allPapersData = [];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -37,19 +66,22 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
+// GitHub 按钮（star/fork 徽章）已从界面移除，不再需要拉取统计数据。
+// 保留调用点不变，但元素缺失时直接返回，避免对 null 取 textContent 报错。
 async function fetchGitHubStats() {
+  const starEl = document.getElementById('starCount');
+  const forkEl = document.getElementById('forkCount');
+  if (!starEl || !forkEl) return;
+
   try {
     const response = await fetch('https://api.github.com/repos/dw-dengwei/daily-arXiv-ai-enhanced');
     const data = await response.json();
-    const starCount = data.stargazers_count;
-    const forkCount = data.forks_count;
-    
-    document.getElementById('starCount').textContent = starCount;
-    document.getElementById('forkCount').textContent = forkCount;
+    starEl.textContent = data.stargazers_count;
+    forkEl.textContent = data.forks_count;
   } catch (error) {
     console.error('获取GitHub统计数据失败:', error);
-    document.getElementById('starCount').textContent = '?';
-    document.getElementById('forkCount').textContent = '?';
+    starEl.textContent = '?';
+    forkEl.textContent = '?';
   }
 }
 
@@ -202,6 +234,7 @@ function initDatePicker() {
   // 配置 Flatpickr
   flatpickrInstance = flatpickr(datepickerInput, {
     inline: true,
+    locale: FLATPICKR_ZH,
     dateFormat: "Y-m-d",
     defaultDate: availableDates[0],
     enable: [

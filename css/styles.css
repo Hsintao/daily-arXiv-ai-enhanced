@@ -352,69 +352,7 @@ header {
   font-weight: 600;
 }
 
-.github-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 24px;
-  background: var(--gradient-primary);
-  color: white;
-  font-size: 14px;
-  font-weight: 500;
-  transition: var(--transition);
-  text-decoration: none !important;
-  box-shadow: var(--shadow-sm);
-}
-
-.github-button:hover {
-  background: var(--gradient-primary);
-  text-decoration: none !important;
-  transform: translateY(-1px);
-  color: white;
-  box-shadow: var(--shadow-md);
-}
-
-.github-button svg {
-  fill: white;
-}
-
-.github-text {
-  font-weight: 500;
-}
-
-.github-stats {
-  display: flex;
-  gap: 6px;
-}
-
-.star-badge,
-.fork-badge {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background-color: rgba(255, 255, 255, 0.25);
-  border-radius: 12px;
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.star-badge svg {
-  fill: white;
-  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.3));
-}
-
-.fork-badge svg {
-  fill: white;
-  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.3));
-}
-
-.star-count,
-.fork-count {
-  color: white;
-  font-weight: 600;
-}
+/* GitHub 按钮及其 star/fork 徽章已从界面移除，相关样式一并删除。 */
 
 .header-controls {
   display: flex;
