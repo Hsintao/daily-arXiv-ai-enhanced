@@ -27,6 +27,70 @@
   --author-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
   --keyword-color: #8b5cf6;
   --keyword-gradient: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  /* 主题相关的新增令牌（浅色默认值，保证未应用暗色规则时渲染不变） */
+  --header-bg: rgba(255, 255, 255, 0.8);
+  --surface-translucent: rgba(255, 255, 255, 0.8);
+  --surface-subtle: rgba(0, 0, 0, 0.05);
+  --surface-subtle-hover: rgba(0, 0, 0, 0.08);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.14);
+  --code-bg: #f6f8fa;
+  --code-text: #24292f;
+  --code-inline-bg: #f3f4f6;
+  --overlay-bg: rgba(15, 23, 42, 0.6);
+  --modal-overlay: rgba(0, 0, 0, 0.5);
+  --modal-overlay-strong: rgba(0, 0, 0, 0.8);
+  --logo-filter: none;
+  /* 兼容别名：settings.css / statistic.css 引用了这些名字但从未定义，
+     此前会落到 var() 内置回退值（白色），在暗色下变成白块。
+     这里补上定义，使它们随主题一起切换。 */
+  --card-background: var(--card-bg-color);
+  --input-bg-color: var(--background-color);
+  --text-primary: var(--text-color);
+  color-scheme: light;
+}
+
+/* 暗色主题令牌层
+   Dark theme token layer. Applied via :root[data-theme="dark"] which is set on
+   <html> by js/theme.js. Only token values change here, so a light page that
+   never gets the attribute still renders exactly as before. */
+:root[data-theme="dark"] {
+  --primary-color: #8b9cf7;
+  --secondary-color: #9b6fd6;
+  --accent-color: #bf95f7;
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-light: linear-gradient(135deg, #232b40 0%, #2e2440 100%);
+  --background-color: #0f1420;
+  --card-bg-color: #161c2a;
+  --background-hover: #222a3b;
+  --text-color: #e6e9f2;
+  --text-secondary: #a9b2c6;
+  --text-tertiary: #939db5;
+  --border-color: #2a3242;
+  --border-accent: rgba(139, 156, 247, 0.32);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 15px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 8px 25px rgba(0, 0, 0, 0.65);
+  --match-highlight: rgba(255, 223, 77, 0.13);
+  --gold-color: #ffd700;
+  --gold-dark: #e0be55;
+  --gold-gradient: linear-gradient(135deg, #ffd700 0%, #d4af37 100%);
+  --author-color: #34d399;
+  --author-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --keyword-color: #a78bfa;
+  --keyword-gradient: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  --header-bg: rgba(15, 20, 32, 0.82);
+  --surface-translucent: rgba(22, 28, 42, 0.82);
+  --surface-subtle: rgba(255, 255, 255, 0.08);
+  --surface-subtle-hover: rgba(255, 255, 255, 0.14);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.24);
+  --code-bg: #1b2130;
+  --code-text: #e6e9f2;
+  --code-inline-bg: #222a3b;
+  --overlay-bg: rgba(0, 0, 0, 0.62);
+  --modal-overlay: rgba(0, 0, 0, 0.66);
+  --modal-overlay-strong: rgba(0, 0, 0, 0.86);
+  --logo-filter: brightness(1.9) saturate(1.1);
+  color-scheme: dark;
 }
 
 * {
@@ -44,6 +108,28 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* 滚动条 —— 跟随主题令牌 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-tertiary);
+  background-clip: content-box;
+}
+
 a {
   color: var(--primary-color);
   text-decoration: none;
@@ -51,6 +137,31 @@ a {
 
 a:hover {
   text-decoration: underline;
+}
+
+/* 代码块 —— 令牌驱动，暗色主题下同样可读 */
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.9em;
+  background-color: var(--code-inline-bg);
+  color: var(--code-text);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+
+pre {
+  background-color: var(--code-bg);
+  color: var(--code-text);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  overflow-x: auto;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
 }
 
 button {
@@ -103,6 +214,33 @@ button {
   background-color: rgba(102, 126, 234, 0.1);
 }
 
+/* 主题切换按钮 —— 每个主题只显示一个图标
+   The toggle button carries both .icon-button and .theme-toggle and contains a
+   sun and a moon path; without these rules both glyphs stack on top of each
+   other. Keyed off [data-theme] on <html>, never off the .dark class. */
+.theme-toggle svg {
+  display: block;
+  fill: currentColor;
+  color: inherit;
+}
+
+.theme-toggle .theme-icon-moon {
+  display: none;
+}
+
+:root[data-theme="dark"] .theme-toggle .theme-icon-sun {
+  display: none;
+}
+
+:root[data-theme="dark"] .theme-toggle .theme-icon-moon {
+  display: block;
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
 /* 视图控制按钮样式 */
 .view-controls {
   display: flex;
@@ -149,7 +287,7 @@ header {
   position: sticky;
   top: 0;
   z-index: 100;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: var(--header-bg);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border-color);
@@ -197,6 +335,7 @@ header {
 .logo-image {
   height: 36px;
   width: auto;
+  filter: var(--logo-filter);
 }
 
 .site-title {
@@ -301,7 +440,7 @@ header {
 
 /* 类别导航栏 */
 .category-nav {
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: var(--surface-translucent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   position: sticky;
@@ -408,7 +547,7 @@ header {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background-color: rgba(0,0,0,0.08);
+  background-color: var(--surface-subtle-hover);
   color: var(--text-secondary);
   display: inline-flex;
   align-items: center;
@@ -416,7 +555,8 @@ header {
 }
 
 .text-search .clear-x:hover {
-  background-color: rgba(0,0,0,0.14);
+  background-color: var(--surface-subtle-hover);
+  filter: brightness(1.15);
 }
 
 .filter-scroll::-webkit-scrollbar {
@@ -475,7 +615,7 @@ header {
   margin-left: 6px;
   min-width: 20px;
   height: 20px;
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--surface-subtle);
   border-radius: 10px;
   font-size: 12px;
   padding: 0 6px;
@@ -753,7 +893,7 @@ main {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--modal-overlay);
   z-index: 1000;
   overflow-y: auto;
   backdrop-filter: blur(5px);
@@ -888,7 +1028,7 @@ main {
   left: 50%;
   transform: translateX(-50%);
   padding: 4px 8px;
-  background-color: rgba(0, 0, 0, 0.8);
+  background-color: var(--modal-overlay-strong);
   color: white;
   font-size: 12px;
   border-radius: 4px;
@@ -924,7 +1064,7 @@ main {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--modal-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -946,14 +1086,14 @@ main {
 .date-picker-content {
   background-color: var(--card-bg-color);
   border-radius: var(--radius-md);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 360px;
   max-height: 90vh;
   overflow-y: auto;
   animation: modalFadeIn 0.3s ease forwards;
   padding: 24px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--border-color);
 }
 
 .date-picker-header {
@@ -1031,7 +1171,7 @@ main {
 }
 
 .flatpickr-prev-month:hover, .flatpickr-next-month:hover {
-  background-color: rgba(0, 0, 0, 0.05) !important;
+  background-color: var(--surface-subtle) !important;
   border-radius: 50% !important;
 }
 
@@ -1135,7 +1275,7 @@ main {
 .flatpickr-day:focus, 
 .flatpickr-day.prevMonthDay:focus, 
 .flatpickr-day.nextMonthDay:focus {
-  background: rgba(0, 0, 0, 0.05) !important;
+  background: var(--surface-subtle) !important;
   border-color: transparent !important;
 }
 
@@ -1144,7 +1284,7 @@ main {
 .flatpickr-day.prevMonthDay, 
 .flatpickr-day.nextMonthDay, 
 .flatpickr-day.notAllowed {
-  color: rgba(57, 57, 57, 0.3) !important;
+  color: var(--text-tertiary) !important;
   background: transparent !important;
   cursor: not-allowed;
 }
@@ -1155,7 +1295,7 @@ main {
   justify-content: center;
   padding: 12px 0;
   border-top: 1px solid var(--border-color);
-  background-color: rgba(0, 0, 0, 0.02);
+  background-color: var(--surface-subtle);
   border-radius: 0 0 var(--radius-md) var(--radius-md);
   margin: 16px -24px -24px -24px;
 }
@@ -1184,7 +1324,7 @@ main {
   background-color: var(--border-color);
   transition: .3s;
   border-radius: 24px;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .toggle-slider:before {
@@ -1195,10 +1335,10 @@ main {
   left: 3px;
   top: 50%;
   transform: translateY(-50%);
-  background-color: white;
+  background-color: var(--card-bg-color);
   transition: .3s;
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 input:checked + .toggle-slider {
@@ -1331,7 +1471,7 @@ input:checked + .toggle-slider:before {
 .loading-spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(0, 0, 0, 0.1);
+  border: 3px solid var(--border-color);
   border-radius: 50%;
   border-top-color: var(--primary-color);
   animation: spinner 1s linear infinite;
@@ -1346,7 +1486,7 @@ input:checked + .toggle-slider:before {
 
 /* 页脚 */
 footer {
-  background-color: #fff;
+  background-color: var(--card-bg-color);
   border-top: 1px solid var(--border-color);
   padding: 24px;
   margin-top: auto;
@@ -1424,7 +1564,7 @@ footer {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(15, 23, 42, 0.6);
+  background-color: var(--overlay-bg);
   backdrop-filter: blur(4px);
   z-index: 1000;
   display: flex;
@@ -1689,10 +1829,6 @@ footer {
   letter-spacing: 0;
   text-transform: none;
 }
-
-  padding-left: 3px; /* 减少左侧内边距 */
-}
-
 
 .author-tag {
   display: inline-flex;
@@ -2169,7 +2305,7 @@ footer {
 
 .pdf-preview-section {
   margin-top: 2rem;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-color);
   padding-top: 1rem;
 }
 
@@ -2190,16 +2326,16 @@ footer {
 }
 
 .pdf-expand-btn:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--surface-subtle);
 }
 
 .pdf-expand-btn svg {
-  fill: #666;
+  fill: var(--text-secondary);
   transition: fill 0.2s;
 }
 
 .pdf-expand-btn:hover svg {
-  fill: #333;
+  fill: var(--text-color);
 }
 
 .pdf-container {
@@ -2212,7 +2348,7 @@ footer {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--modal-overlay);
   z-index: 999; /* 确保在模态框之上，但在展开的PDF之下 */
 }
 
@@ -2224,8 +2360,8 @@ footer {
   width: 90vw;
   height: 90vh;
   z-index: 1000;
-  background: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: var(--card-bg-color);
+  box-shadow: var(--shadow-lg);
 }
 
 .pdf-container.expanded iframe {
@@ -2233,16 +2369,16 @@ footer {
 }
 
 .pdf-container {
-  background: #f5f5f5;
+  background: var(--background-hover);
   border-radius: 8px;
   padding: 1rem;
   margin-top: 1rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .pdf-container iframe {
   border-radius: 4px;
-  background: white;
+  background: var(--card-bg-color);
   display: block;
   margin: 0 auto;
 }
@@ -2254,8 +2390,8 @@ footer {
   right: 30px;
   width: 50px;
   height: 50px;
-  background: white;
-  border: none;
+  background: var(--card-bg-color);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   color: var(--primary-color);
   cursor: pointer;
@@ -2315,9 +2451,9 @@ footer {
   display: inline-flex;
   align-items: center;
   padding: 4px 8px;
-  background-color: #f6f8fa;
-  color: #24292f;
-  border: 1px solid rgba(27, 31, 36, 0.15);
+  background-color: var(--code-bg);
+  color: var(--code-text);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 12px;
   font-weight: 500;
@@ -2327,15 +2463,15 @@ footer {
 }
 
 .github-link:hover {
-  background-color: #f3f4f6;
+  background-color: var(--code-inline-bg);
   text-decoration: none;
-  border-color: rgba(27, 31, 36, 0.15);
+  border-color: var(--border-color);
 }
 
 .github-link.hot-repo {
   /* background-color: #fff8c5;  Removed yellow background */
-  border-color: rgba(27, 31, 36, 0.15);
-  color: #24292f;
+  border-color: var(--border-color);
+  color: var(--code-text);
 }
 
 .github-link.outdated-repo {
@@ -2344,7 +2480,7 @@ footer {
 
 .github-stars {
   margin-left: 4px;
-  color: #57606a;
+  color: var(--text-secondary);
 }
 
 .hot-icon {

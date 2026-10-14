@@ -60,22 +60,22 @@
 }
 
 .stat-card {
-    background: white;
+    background: var(--card-bg-color);
     border-radius: 12px;
     padding: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-sm);
 }
 
 .stat-card h2 {
     margin: 0 0 1rem;
-    color: #374151;
+    color: var(--text-color);
     font-size: 1.25rem;
 }
 
 .total-papers {
     font-size: 2.5rem;
     font-weight: bold;
-    color: #4F46E5;
+    color: var(--primary-color);
     text-align: center;
 }
 
@@ -94,7 +94,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .author-item:last-child {
@@ -102,15 +102,15 @@
 }
 
 .author-name {
-    color: #374151;
+    color: var(--text-color);
 }
 
 .author-count {
-    background: #f3f4f6;
+    background: var(--background-hover);
     padding: 0.25rem 0.75rem;
     border-radius: 9999px;
     font-size: 0.875rem;
-    color: #6b7280;
+    color: var(--text-secondary);
 }
 
 .keyword-cloud {
@@ -121,10 +121,10 @@
 }
 
 .keyword-tag {
-    background: #f3f4f6;
+    background: var(--background-hover);
     padding: 0.5rem 1rem;
     border-radius: 9999px;
-    color: #374151;
+    color: var(--text-color);
     font-size: 0.875rem;
     display: flex;
     align-items: center;
@@ -132,11 +132,11 @@
 }
 
 .keyword-count {
-    background: white;
+    background: var(--card-bg-color);
     padding: 0.125rem 0.5rem;
     border-radius: 9999px;
     font-size: 0.75rem;
-    color: #6b7280;
+    color: var(--text-secondary);
 }
 
 .date-picker-modal {
@@ -145,7 +145,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: var(--modal-overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -167,14 +167,14 @@
 .date-picker-content {
     background-color: var(--card-bg-color);
     border-radius: var(--radius-md);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-lg);
     width: 100%;
     max-width: 360px;
     max-height: 90vh;
     overflow-y: auto;
     animation: modalFadeIn 0.3s ease forwards;
     padding: 24px;
-    border: 1px solid rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--border-color);
 }
 
 .date-picker-header {
@@ -252,7 +252,7 @@
 }
 
 .flatpickr-prev-month:hover, .flatpickr-next-month:hover {
-    background-color: rgba(0, 0, 0, 0.05) !important;
+    background-color: var(--surface-subtle) !important;
     border-radius: 50% !important;
 }
 
@@ -356,7 +356,7 @@
 .flatpickr-day:focus, 
 .flatpickr-day.prevMonthDay:focus, 
 .flatpickr-day.nextMonthDay:focus {
-    background: rgba(0, 0, 0, 0.05) !important;
+    background: var(--surface-subtle) !important;
     border-color: transparent !important;
 }
 
@@ -365,7 +365,7 @@
 .flatpickr-day.prevMonthDay, 
 .flatpickr-day.nextMonthDay, 
 .flatpickr-day.notAllowed {
-    color: rgba(57, 57, 57, 0.3) !important;
+    color: var(--text-tertiary) !important;
     background: transparent !important;
     cursor: not-allowed;
 }
@@ -376,7 +376,7 @@
     justify-content: center;
     padding: 12px 0;
     border-top: 1px solid var(--border-color);
-    background-color: rgba(0, 0, 0, 0.02);
+    background-color: var(--surface-subtle);
     border-radius: 0 0 var(--radius-md) var(--radius-md);
     margin: 16px -24px -24px -24px;
 }
@@ -405,7 +405,7 @@
     background-color: var(--border-color);
     transition: .3s;
     border-radius: 24px;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-sm);
 }
 
 .toggle-slider:before {
@@ -416,10 +416,10 @@
     left: 3px;
     top: 50%;
     transform: translateY(-50%);
-    background-color: white;
+    background-color: var(--card-bg-color);
     transition: .3s;
     border-radius: 50%;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 input:checked + .toggle-slider {
@@ -455,7 +455,7 @@ input:checked + .toggle-slider:before {
 .no-data {
     padding: 2rem;
     text-align: center;
-    color: #666;
+    color: var(--text-secondary);
     font-size: 0.9rem;
 }
 
@@ -465,8 +465,8 @@ input:checked + .toggle-slider:before {
     width: 20px;
     height: 20px;
     margin-right: 8px;
-    border: 2px solid #ddd;
-    border-top-color: #666;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--text-secondary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -476,7 +476,7 @@ input:checked + .toggle-slider:before {
 }
 
 .no-data {
-    color: #666;
+    color: var(--text-secondary);
     font-style: italic;
 }
 
@@ -487,9 +487,9 @@ input:checked + .toggle-slider:before {
 }
 
 .papers-container {
-    background: #ffffff;
+    background: var(--card-bg-color);
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-md);
     margin: 20px;
     padding: 24px;
     max-width: 1200px;
@@ -499,10 +499,10 @@ input:checked + .toggle-slider:before {
 
 .papers-title {
     font-size: 1.5rem;
-    color: #333;
+    color: var(--text-color);
     margin-bottom: 20px;
     padding-bottom: 10px;
-    border-bottom: 2px solid #eee;
+    border-bottom: 2px solid var(--border-color);
 }
 
 .papers-list {
@@ -517,17 +517,17 @@ input:checked + .toggle-slider:before {
 }
 
 .papers-list::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: var(--background-hover);
     border-radius: 4px;
 }
 
 .papers-list::-webkit-scrollbar-thumb {
-    background: #888;
+    background: var(--scrollbar-thumb);
     border-radius: 4px;
 }
 
 .papers-list::-webkit-scrollbar-thumb:hover {
-    background: #555;
+    background: var(--text-tertiary);
 }
 
 .analysis-container {
@@ -537,23 +537,23 @@ input:checked + .toggle-slider:before {
 }
 
 .keyword-cloud {
-    background: #fff;
+    background: var(--card-bg-color);
     border-radius: 8px;
     padding: 20px;
     margin-bottom: 30px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: var(--shadow-sm);
 }
 
 .summary-stats {
-    background: #fff;
+    background: var(--card-bg-color);
     border-radius: 8px;
     padding: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: var(--shadow-sm);
 }
 
 .summary-stats h3 {
     margin: 0 0 20px 0;
-    color: #333;
+    color: var(--text-color);
     font-size: 1.5em;
 }
 
@@ -609,7 +609,7 @@ input:checked + .toggle-slider:before {
     height: 20px;
     padding: 0 6px;
     border-radius: 10px;
-    background: white;
+    background: var(--card-bg-color);
     color: var(--text-secondary);
     font-size: 12px;
     font-weight: 500;
@@ -623,8 +623,8 @@ input:checked + .toggle-slider:before {
     right: -450px;
     width: 450px;
     height: 100vh;
-    background: #fff;
-    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+    background: var(--card-bg-color);
+    box-shadow: var(--shadow-md);
     transition: right 0.3s ease;
     z-index: 1000;
 }
@@ -635,7 +635,7 @@ input:checked + .toggle-slider:before {
 
 .sidebar-header {
     padding: 0px 0px 0px 0px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -647,18 +647,31 @@ input:checked + .toggle-slider:before {
 
 .header-content h3 {
     margin: 0;
-    color: #333;
+    color: var(--text-color);
     font-size: 18px;
     margin-bottom: 4px;
 }
 
+/* 关键词高亮色：原 #2196F3 在金色高亮背景上仅 2.73:1（浅色）/2.97:1（暗色），
+   两种主题都不达标。改为同色系更深的靛蓝（浅色）与更亮的靛蓝（暗色），均 ≥4.5:1。
+   Keyword highlight colour: the original #2196F3 measured only 2.73:1 on the gold
+   highlight background in light mode and 2.97:1 in dark. Deeper indigo in light
+   mode, brighter indigo in dark mode; both clear WCAG AA 4.5:1. */
+:root {
+    --keyword-highlight-color: #0d5eb0;
+}
+
+:root[data-theme="dark"] {
+    --keyword-highlight-color: #aebbfd;
+}
+
 .keyword-line {
     font-size: 14px;
-    color: #666;
+    color: var(--text-secondary);
 }
 
 .keyword-highlight {
-    color: #2196F3;
+    color: var(--keyword-highlight-color);
     font-weight: 500;
 }
 
@@ -667,7 +680,7 @@ input:checked + .toggle-slider:before {
     border: none;
     font-size: 24px;
     cursor: pointer;
-    color: #666;
+    color: var(--text-secondary);
     padding: 0;
     margin-left: 16px;
 }
@@ -687,14 +700,14 @@ input:checked + .toggle-slider:before {
     margin-bottom: 16px;
     margin-left: 15px;
     border-radius: 8px;
-    background: #fff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    background: var(--card-bg-color);
+    box-shadow: var(--shadow-sm);
     position: relative;
 }
 
 .paper-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-md);
 }
 
 .paper-number {
@@ -716,7 +729,7 @@ input:checked + .toggle-slider:before {
 .paper-title {
     font-size: 16px;
     font-weight: 600;
-    color: #2d3436;
+    color: var(--text-color);
     text-decoration: none;
     margin-bottom: 10px;
     display: block;
@@ -724,12 +737,12 @@ input:checked + .toggle-slider:before {
 }
 
 .paper-title:hover {
-    color: #6c5ce7;
+    color: var(--primary-color);
 }
 
 .paper-authors {
     font-size: 13px;
-    color: #636e72;
+    color: var(--text-secondary);
     margin-bottom: 10px;
 }
 
@@ -740,8 +753,8 @@ input:checked + .toggle-slider:before {
 .category-tag {
     display: inline-block;
     padding: 3px 10px;
-    background: #f1f2f6;
-    color: #2d3436;
+    background: var(--background-hover);
+    color: var(--text-color);
     border-radius: 16px;
     font-size: 12px;
     margin-right: 6px;
@@ -751,9 +764,9 @@ input:checked + .toggle-slider:before {
 .paper-summary {
     padding: 12px 16px;
     margin-top: 12px;
-    background: #f8f9fa;
+    background: var(--background-hover);
     border-radius: 6px;
-    border-left: 3px solid #6c5ce7;
+    border-left: 3px solid var(--primary-color);
 }
 
 /* Make keyword items clickable */
@@ -763,7 +776,7 @@ input:checked + .toggle-slider:before {
 }
 
 .keyword-item:hover {
-    background-color: rgba(33, 150, 243, 0.1);
+    background-color: var(--surface-subtle-hover);
 }
 
 .sidebar-content {
@@ -897,7 +910,7 @@ input:checked + .toggle-slider:before {
     height: 20px;
     padding: 0 6px;
     border-radius: 10px;
-    background: white;
+    background: var(--card-bg-color);
     color: var(--text-secondary);
     font-size: 12px;
     font-weight: 500;
@@ -951,7 +964,7 @@ input:checked + .toggle-slider:before {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: var(--modal-overlay-strong);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -961,12 +974,12 @@ input:checked + .toggle-slider:before {
 }
 
 .warning-content {
-  background-color: white;
+  background-color: var(--card-bg-color);
   padding: 25px;
   border-radius: 12px;
   max-width: 90%;
   width: 400px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-lg);
   text-align: center;
 }
 
@@ -979,7 +992,7 @@ input:checked + .toggle-slider:before {
 .warning-content p {
   margin: 0 0 20px 0;
   line-height: 1.5;
-  color: #333;
+  color: var(--text-color);
 }
 
 .warning-content button {

@@ -17,3 +17,8 @@ package-lock.json
 yarn.lock
 .DS_Store
 package.json
+
+# Generated output of the QA harness in tools/qa/ (the script itself is tracked).
+tools/qa/screenshots/
+tools/qa/*-report.json
+tools/qa/defect-baseline.json
