@@ -1116,13 +1116,13 @@ main {
   font-size: inherit !important;
   font-weight: inherit !important;
   line-height: 1.5 !important;
-  height: auto !important;
   color: var(--text-color) !important;
   vertical-align: middle !important;
   margin: 0 !important;
 }
 
-/* Left half: the year. */
+/* Left half: the year. A fixed 27px line box keeps the row height stable and
+   untouched by the CJK fallback font used on the right. */
 .flatpickr-current-month .numInputWrapper {
   order: 1 !important;
   display: inline-flex !important;
@@ -1133,7 +1133,9 @@ main {
      would let the input swallow the whole row. */
   flex: 1 1 50% !important;
   width: auto !important;
-  height: auto !important;
+  /* Fixed height (not auto): the right-hand month falls back to a CJK font
+     whose taller line box would otherwise stretch the whole row. */
+  height: 27px !important;
 }
 
 /* Right half: the month. */
@@ -1143,6 +1145,16 @@ main {
   padding: 0 !important;
   background: transparent !important;
   border: none !important;
+  /* Inter ships no CJK glyphs, so 「十月」 is drawn by a system fallback that
+     renders noticeably larger than Inter at the same nominal size (measured:
+     16.76px vs 13.45px of ink at 18px). Give an explicit CJK stack so the
+     fallback is predictable, and trim the size to match the Latin year.
+     (Not `inherit`: listing families after it would be invalid CSS.) */
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC",
+               "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC",
+               sans-serif !important;
+  font-size: 15.5px !important;
+  line-height: 27px !important;
   /* Keep the native chevron: it is the affordance that marks this as a
      dropdown, and hiding it makes the month look like static text.
      Native selects always draw that chevron at the box's trailing edge, so
