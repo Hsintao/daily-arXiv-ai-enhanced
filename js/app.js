@@ -1021,6 +1021,30 @@ function filterByCategory(category) {
   renderPapers();
 }
 
+// 帮助函数：跳过已被高亮的片段做替换
+// 用于第二层高亮(主题词),避免在已有的 <span> 里再套一层。
+// Wraps matches in `className`, skipping any region already inside a
+// highlight span. Without this, a word matching both a user keyword and a
+// topic term ends up with two nested spans, and the inner colour wins.
+function highlightMatchesSkippingExisting(text, terms, className) {
+  if (!terms || terms.length === 0 || !text) {
+    return text;
+  }
+
+  // Split on existing highlight spans, keeping them as delimiters, and only
+  // transform the segments between them.
+  const parts = text.split(/(<span class="(?:keyword|author|topic)-highlight">[\s\S]*?<\/span>)/g);
+
+  return parts
+    .map(part => {
+      if (/^<span class="(?:keyword|author|topic)-highlight">/.test(part)) {
+        return part;
+      }
+      return highlightMatches(part, terms, className);
+    })
+    .join('');
+}
+
 // 帮助函数：高亮文本中的匹配内容
 function highlightMatches(text, terms, className = 'highlight-match') {
   if (!terms || terms.length === 0 || !text) {
@@ -1336,8 +1360,17 @@ function renderPapers() {
   // features do not interfere. Nothing is hidden -- matching papers only move
   // to the top, and the sort is stable for everything else.
   if (typeof matchTopics === 'function') {
+    const detailed = typeof matchTopicsDetailed === 'function';
+
     filteredPapers.forEach(paper => {
-      paper.topics = matchTopics(paper);
+      if (detailed) {
+        const result = matchTopicsDetailed(paper);
+        paper.topics = result.labels;
+        paper.topicTerms = result.terms;
+      } else {
+        paper.topics = matchTopics(paper);
+        paper.topicTerms = [];
+      }
       paper.isTopicPaper = paper.topics.length > 0;
     });
 
@@ -1392,6 +1425,18 @@ function renderPapers() {
       ? highlightMatches(paper.summary, titleSummaryTerms, 'keyword-highlight') 
       : paper.summary;
 
+    // 主题词高亮：单独一层，用不同颜色区分"为什么这篇排在前面"。
+    // 在关键词高亮之后应用，所以已匹配的词不会再被套一层。
+    // Topic terms get their own highlight colour so it is clear why a paper
+    // was boosted, distinct from user keyword matches.
+    const topicTerms = paper.topicTerms || [];
+    const topicTitle = topicTerms.length > 0
+      ? highlightMatchesSkippingExisting(highlightedTitle, topicTerms, 'topic-highlight')
+      : highlightedTitle;
+    const topicSummary = topicTerms.length > 0
+      ? highlightMatchesSkippingExisting(highlightedSummary, topicTerms, 'topic-highlight')
+      : highlightedSummary;
+
     // 高亮作者（作者过滤 + 文本搜索）
     const authorTerms = [];
     if (activeAuthors.length > 0) authorTerms.push(...activeAuthors);
@@ -1417,18 +1462,37 @@ function renderPapers() {
     //   `;
     // }
 
+    // 主题标签：显示命中的主题组,并在 tooltip 里列出具体匹配词。
+    // 有些匹配只出现在英文摘要或中文总结里,而卡片只显示中文 tldr,所以词
+    // 未必能在卡片内高亮 —— tooltip 保证原因始终可见。
+    // Topic badges show which groups matched, with the exact terms in the
+    // tooltip. Some terms match only in the English abstract or the Chinese
+    // summary while the card renders the Chinese tldr, so the term cannot
+    // always be highlighted inline; the tooltip keeps the reason visible.
+    const topicBadges = (paper.topics && paper.topics.length > 0)
+      ? `<div class="topic-badges">${paper.topics
+          .map(t => {
+            const reason = (paper.topicTerms && paper.topicTerms.length)
+              ? `匹配主题: ${t}\n匹配词: ${paper.topicTerms.join(', ')}`
+              : `匹配主题: ${t}`;
+            return `<span class="topic-badge" title="${reason.replace(/"/g, '&quot;')}">${t}</span>`;
+          })
+          .join('')}</div>`
+      : '';
+
     paperCard.innerHTML = `
       <div class="paper-card-index">${index + 1}</div>
       ${paper.isMatched ? '<div class="match-badge" title="匹配您的搜索条件"></div>' : ''}
       <div class="paper-card-header">
-        <h3 class="paper-card-title">${highlightedTitle}</h3>
+        <h3 class="paper-card-title">${topicTitle}</h3>
         <p class="paper-card-authors">${formattedAuthors}</p>
+        ${topicBadges}
         <div class="paper-card-categories">
           ${categoryTags}
         </div>
       </div>
       <div class="paper-card-body">
-        <p class="paper-card-summary">${highlightedSummary}</p>
+        <p class="paper-card-summary">${topicSummary}</p>
         <div class="paper-card-footer">
           <div class="footer-left">
             <span class="paper-card-date">${formatDate(paper.date)}</span>
@@ -1466,9 +1530,14 @@ function showPaperDetails(paper, paperIndex) {
   const highlightedTitle = modalTitleTerms.length > 0 
     ? highlightMatches(paper.title, modalTitleTerms, 'keyword-highlight') 
     : paper.title;
-  
+
+  // 主题词高亮(与卡片一致)
+  const modalTopicTitle = (paper.topicTerms && paper.topicTerms.length > 0)
+    ? highlightMatchesSkippingExisting(highlightedTitle, paper.topicTerms, 'topic-highlight')
+    : highlightedTitle;
+
   // 在标题前添加索引号
-  modalTitle.innerHTML = paperIndex ? `<span class="paper-index-badge">${paperIndex}</span> ${highlightedTitle}` : highlightedTitle;
+  modalTitle.innerHTML = paperIndex ? `<span class="paper-index-badge">${paperIndex}</span> ${modalTopicTitle}` : modalTopicTitle;
   
   const abstractText = paper.details || '';
   
@@ -1493,6 +1562,14 @@ function showPaperDetails(paper, paperIndex) {
   const highlightedAbstract = modalTitleTerms.length > 0 
     ? highlightMatches(abstractText, modalTitleTerms, 'keyword-highlight') 
     : abstractText;
+
+  // 主题词也在摘要里高亮 —— 很多主题词只出现在英文摘要中,卡片里看不到,
+  // 打开详情后就能对上号。
+  // Topic terms are highlighted in the abstract too: many match only there,
+  // which the card never shows, so the detail view is where they line up.
+  const modalTopicAbstract = (paper.topicTerms && paper.topicTerms.length > 0)
+    ? highlightMatchesSkippingExisting(highlightedAbstract, paper.topicTerms, 'topic-highlight')
+    : highlightedAbstract;
   
   // 高亮其他部分（如果存在且是摘要的一部分）
   const highlightedMotivation = paper.motivation && modalTitleTerms.length > 0 
@@ -1534,7 +1611,7 @@ function showPaperDetails(paper, paperIndex) {
         ${paper.conclusion ? `<div class="paper-section"><h4>Conclusion</h4><p>${highlightedConclusion}</p></div>` : ''}
       </div>
       
-      ${highlightedAbstract ? `<h3>Abstract</h3><p class="original-abstract">${highlightedAbstract}</p>` : ''}
+      ${modalTopicAbstract ? `<h3>Abstract</h3><p class="original-abstract">${modalTopicAbstract}</p>` : ''}
       
       <div class="pdf-preview-section">
         <div class="pdf-header">

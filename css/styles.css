@@ -1754,6 +1754,45 @@ footer {
   transition: all 0.2s ease;
 }
 
+/* 主题词高亮 —— 与关键词高亮(金色)区分,用主色紫
+   Topic term highlight, deliberately a different colour from the gold
+   keyword highlight so it is obvious which matched for ranking reasons
+   rather than because the user typed it. */
+.topic-highlight {
+  background-color: rgba(109, 45, 173, 0.14);
+  border-radius: 3px;
+  padding: 0 2px;
+  font-weight: 500;
+  color: inherit;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: background-color 0.2s ease;
+}
+
+.topic-highlight:hover {
+  background-color: rgba(109, 45, 173, 0.26);
+}
+
+/* 主题标签 —— 显示命中的主题组名 */
+.topic-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 6px;
+}
+
+.topic-badge {
+  display: inline-block;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 1px 7px;
+  border-radius: 10px;
+  color: var(--accent-color);
+  background-color: rgba(109, 45, 173, 0.1);
+  border: 1px solid rgba(109, 45, 173, 0.28);
+  white-space: nowrap;
+}
+
 .author-highlight:hover {
   background-color: rgba(255, 215, 0, 0.2);
   box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.35);

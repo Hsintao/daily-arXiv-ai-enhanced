@@ -277,15 +277,45 @@ function topicHaystack(paper) {
 }
 
 // Compiled once at load time rather than per paper, since the list is static.
+// Each term gets its own pattern as well as the combined one, so the UI can
+// highlight the exact word that matched rather than the whole group.
 const TOPIC_PATTERNS = TOPIC_GROUPS.map((group) => ({
   id: group.id,
   label: group.label,
+  terms: group.terms,
   pattern: buildTopicPattern(group.terms),
+  termPatterns: group.terms.map((term) => ({
+    term,
+    pattern: buildTopicPattern([term]),
+  })),
   excludes: (TOPIC_EXCLUDES[group.id] || []).map(
     (phrase) => new RegExp(phrase.replace(/[-\s]+/g, '[-\\s]+'), 'i')
   ),
   generativeSensitive: GENERATIVE_SENSITIVE_GROUPS.includes(group.id),
 }));
+
+/**
+ * Decide whether a group applies to a haystack, applying every guard.
+ * Returns the matched group entry, or null.
+ */
+function topicApplies(topic, haystack) {
+  if (!topic.pattern || !topic.pattern.test(haystack)) return null;
+
+  // Skip when a disqualifying phrase is present.
+  if (topic.excludes.some((re) => re.test(haystack))) return null;
+
+  // For groups where generative vocabulary hijacks the term, require some
+  // imaging vocabulary to be present as well.
+  if (
+    topic.generativeSensitive &&
+    GENERATIVE_CONTEXT.test(haystack) &&
+    !IMAGING_CONTEXT.test(haystack)
+  ) {
+    return null;
+  }
+
+  return topic;
+}
 
 /**
  * Return the labels of every topic group this paper belongs to.
@@ -297,24 +327,41 @@ function matchTopics(paper) {
 
   const matched = [];
   for (const topic of TOPIC_PATTERNS) {
-    if (!topic.pattern || !topic.pattern.test(haystack)) continue;
-
-    // Skip when a disqualifying phrase is present.
-    if (topic.excludes.some((re) => re.test(haystack))) continue;
-
-    // For groups where generative vocabulary hijacks the term, require some
-    // imaging vocabulary to be present as well.
-    if (
-      topic.generativeSensitive &&
-      GENERATIVE_CONTEXT.test(haystack) &&
-      !IMAGING_CONTEXT.test(haystack)
-    ) {
-      continue;
-    }
-
-    matched.push(topic.label);
+    if (topicApplies(topic, haystack)) matched.push(topic.label);
   }
   return matched;
+}
+
+/**
+ * Like matchTopics, but also reports which individual terms matched.
+ *
+ * Returns { labels: string[], terms: string[] }.
+ *
+ * Note: the terms are found in the combined haystack, which includes the
+ * Chinese summary. A term that only appears in the AI summary will be
+ * reported here but cannot be highlighted in the English abstract, because
+ * the abstract does not contain that text. Callers should treat a missing
+ * highlight as normal, not as a bug.
+ */
+function matchTopicsDetailed(paper) {
+  const haystack = topicHaystack(paper);
+  if (!haystack.trim()) return { labels: [], terms: [] };
+
+  const labels = [];
+  const terms = [];
+
+  for (const topic of TOPIC_PATTERNS) {
+    if (!topicApplies(topic, haystack)) continue;
+    labels.push(topic.label);
+
+    for (const entry of topic.termPatterns) {
+      if (entry.pattern && entry.pattern.test(haystack) && !terms.includes(entry.term)) {
+        terms.push(entry.term);
+      }
+    }
+  }
+
+  return { labels, terms };
 }
 
 /** True when the paper matches at least one configured topic. */
