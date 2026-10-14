@@ -224,10 +224,10 @@ jobs:
           esac
         fi
         
-    - name: Inject repository info into data-config.js
+    - name: Verify repository info in data-config.js
       if: steps.dedup_check.outputs.has_new_content == 'true'
       run: |
-        echo "注入仓库信息到 data-config.js... / Injecting repository info into data-config.js..."
+        echo "校验 data-config.js 中的仓库信息... / Verifying repository info in data-config.js..."
         
         # 获取仓库信息 / Get repository information
         REPO_OWNER="${{ github.repository_owner }}"
@@ -236,15 +236,37 @@ jobs:
         echo "仓库所有者: $REPO_OWNER / Repository owner: $REPO_OWNER"
         echo "仓库名称: $REPO_NAME / Repository name: $REPO_NAME"
         
-        # 注入仓库信息到 data-config.js / Inject repository info into data-config.js
-        if [ -f "js/data-config.js" ]; then
-          sed -i "s/PLACEHOLDER_REPO_OWNER/$REPO_OWNER/g" js/data-config.js
-          sed -i "s/PLACEHOLDER_REPO_NAME/$REPO_NAME/g" js/data-config.js
-          echo "✅ 仓库信息已注入到 js/data-config.js / Repository info injected into js/data-config.js"
-        else
+        # data-config.js 的值是写死的(不再由 CI 注入)。这里只做一致性校验,
+        # 以便仓库改名/转移时能立刻发现问题,而不是让线上页面静默 404。
+        # data-config.js is hardcoded (no longer injected by CI). Verify the
+        # values still match, so a rename fails here instead of silently
+        # serving a 404 to the live page.
+        if [ ! -f "js/data-config.js" ]; then
           echo "❌ ERROR: js/data-config.js not found!"
           exit 1
         fi
+        
+        CONFIGURED_OWNER=$(sed -n "s/.*repoOwner:[[:space:]]*'\([^']*\)'.*/\1/p" js/data-config.js | head -1)
+        CONFIGURED_NAME=$(sed -n "s/.*repoName:[[:space:]]*'\([^']*\)'.*/\1/p" js/data-config.js | head -1)
+        
+        echo "data-config.js -> repoOwner=$CONFIGURED_OWNER repoName=$CONFIGURED_NAME"
+        
+        if [ -z "$CONFIGURED_OWNER" ] || [ -z "$CONFIGURED_NAME" ]; then
+          echo "❌ ERROR: data-config.js 缺少 repoOwner/repoName(可能是未替换的占位符)"
+          echo "❌ ERROR: data-config.js is missing repoOwner/repoName"
+          exit 1
+        fi
+        
+        if [ "$CONFIGURED_OWNER" != "$REPO_OWNER" ] || [ "$CONFIGURED_NAME" != "$REPO_NAME" ]; then
+          echo "❌ ERROR: data-config.js 与实际仓库不匹配,线上页面将无法加载数据"
+          echo "❌ ERROR: data-config.js does not match this repository; the site cannot load data"
+          echo "   期望/expected: $REPO_OWNER/$REPO_NAME"
+          echo "   实际/actual  : $CONFIGURED_OWNER/$CONFIGURED_NAME"
+          echo "   修复/fix: 更新 js/data-config.js 中的 repoOwner/repoName"
+          exit 1
+        fi
+        
+        echo "✅ 仓库信息一致 / Repository info matches"
 
     - name: Commit code changes to main branch
       if: steps.dedup_check.outputs.has_new_content == 'true'
