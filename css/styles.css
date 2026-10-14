@@ -1157,11 +1157,67 @@ main {
   padding: 0 !important;
   font-size: 18px !important;
   font-weight: 600 !important;
+  /* Center the month + year group as one unit and share a single baseline */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  line-height: 1.5 !important;
+  height: auto !important;
+  color: var(--text-color) !important;
 }
 
-.flatpickr-monthDropdown-months {
-  font-weight: 600 !important;
+/* Month <select> and year <input> are native controls: they do NOT inherit the
+   page font stack, so match it explicitly to keep both labels identical. */
+.flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-current-month .cur-year {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  line-height: 1.5 !important;
+  height: auto !important;
   color: var(--text-color) !important;
+  vertical-align: middle !important;
+  margin: 0 !important;
+}
+
+.flatpickr-current-month .flatpickr-monthDropdown-months {
+  padding: 0 4px 0 0 !important;
+  background: transparent !important;
+  border: none !important;
+  /* Keep the native chevron: it is the affordance that marks this as a
+     dropdown, and hiding it makes the month look like static text. */
+  appearance: auto !important;
+  -webkit-appearance: menulist !important;
+  text-align: center !important;
+}
+
+.flatpickr-current-month .numInputWrapper {
+  display: inline-flex !important;
+  align-items: center !important;
+  /* Must stay a tight box: flatpickr defaults this to width:100%, which
+     stretches the year input across the row and breaks the centering. */
+  width: auto !important;
+  height: auto !important;
+  flex: 0 0 auto !important;
+}
+
+/* Flatpickr shows spinner arrows on hover that add asymmetric width and push
+   the year off the shared center line; the year is a 4-digit field, so drop it. */
+.flatpickr-current-month .numInputWrapper span.arrowUp,
+.flatpickr-current-month .numInputWrapper span.arrowDown {
+  display: none !important;
+}
+
+.flatpickr-current-month .cur-year {
+  /* 4 digits at the inherited 18px size; without this the input inherits
+     width:100% from flatpickr and swallows the whole header row. */
+  width: 4.6ch !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  text-align: center !important;
 }
 
 .flatpickr-prev-month, .flatpickr-next-month {
