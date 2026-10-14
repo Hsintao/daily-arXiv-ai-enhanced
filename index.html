@@ -245,6 +245,9 @@
     <!-- Topic boosting for low-level vision / computational photography.
          Loaded before app.js because app.js calls matchTopics() during render. -->
     <script src="js/topics.js"></script>
-    <script src="js/app.js?v=1.0.1"></script>
+    <!-- Bump the ?v= value whenever js/app.js changes: GitHub Pages serves it
+         with max-age=600, so without a new version a returning visitor keeps
+         the cached copy for up to 10 minutes. -->
+    <script src="js/app.js?v=1.0.2"></script>
 </body>
 </html> 
