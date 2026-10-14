@@ -246,8 +246,11 @@
     align-items: center !important;
     justify-content: center !important;
     gap: 0 !important;
-    line-height: 1.5 !important;
-    height: auto !important;
+    line-height: 27px !important;
+    /* Explicit 27px row: the text and the absolutely-positioned prev/next
+       arrows must center against the SAME box, otherwise the arrows land
+       1.5px low (measured: text CY 15.5 vs arrow CY 17). */
+    height: 27px !important;
     color: var(--text-color) !important;
 }
 
@@ -258,7 +261,7 @@
     font-family: inherit !important;
     font-size: inherit !important;
     font-weight: inherit !important;
-    line-height: 1.5 !important;
+    line-height: 27px !important;
     color: var(--text-color) !important;
     vertical-align: middle !important;
     margin: 0 !important;
@@ -329,13 +332,36 @@
 }
 
 .flatpickr-prev-month, .flatpickr-next-month {
-    padding: 5px !important;
+    /* Flatpickr absolutely-positions these against .flatpickr-month (which is
+       34px tall), so their `top: 0; height: 100%` box does not match the 27px
+       text row and the glyphs sit ~1.5px low. Pin them to the same 27px row
+       and center the icon inside it, so arrows share the text's center line.
+       Left/right come from flatpickr itself and are left untouched. */
+    top: 0 !important;
+    /* Square box (27x27) rather than the icon's natural 14x27: with
+       border-radius:50% a non-square box renders as a tall oval on hover.
+       The icon stays centered inside via flex. */
+    width: 27px !important;
+    height: 27px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     fill: var(--primary-color) !important;
     color: var(--primary-color) !important;
 }
 
+/* The icon is the flex item now, so it no longer needs flatpickr's offsets. */
+.flatpickr-prev-month svg, .flatpickr-next-month svg {
+    position: static !important;
+    top: auto !important;
+    vertical-align: middle !important;
+}
+
 .flatpickr-prev-month:hover, .flatpickr-next-month:hover {
     background-color: var(--surface-subtle) !important;
+    /* The box is already 27x27 (see above), so this is a true circle and no
+       width override is needed on hover. */
     border-radius: 50% !important;
 }
 
