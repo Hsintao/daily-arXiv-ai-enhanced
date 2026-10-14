@@ -122,10 +122,23 @@ jobs:
         export LANGUAGE="${{ vars.LANGUAGE }}"
         export MODEL_NAME="${{ vars.MODEL_NAME }}"
         
-        python enhance.py --data ../data/${today}.jsonl
+        # Papers are independent, so process them concurrently. 8 is a
+        # deliberately conservative default: DeepSeek allows 2500 concurrent
+        # requests on deepseek-flash, but each paper also triggers a content
+        # filter call and a GitHub API call, and unauthenticated GitHub API
+        # access is limited to 60 requests/hour. Override with the
+        # AI_MAX_WORKERS repository variable.
+        MAX_WORKERS="${{ vars.AI_MAX_WORKERS }}"
+        if [ -z "$MAX_WORKERS" ]; then
+          MAX_WORKERS=8
+        fi
+        echo "并行度 / Concurrency: $MAX_WORKERS"
+        
+        python enhance.py --data ../data/${today}.jsonl --max_workers "$MAX_WORKERS"
+        STATUS=$?
         
         # 检查AI处理是否成功 / Check if AI processing was successful
-        if [ $? -ne 0 ]; then
+        if [ $STATUS -ne 0 ]; then
             echo "AI处理失败 / AI processing failed"
             exit 1
         fi
