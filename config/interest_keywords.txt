@@ -1,3 +1,51 @@
+# 兴趣关键词 / Interest keywords
+#
+# ⚠️ 这个文件是「参考清单」,不是程序读取的配置。
+#    The site does NOT read this file. The ranking list actually used lives in
+#    js/topics.js (see TOPIC_GROUPS) — edit that file and reload the page.
+#
+# 保留原因 / Why kept: 作为术语备忘。js/topics.js 的词表由此整合而来。
+# Kept as a terminology reference; js/topics.js was built from it.
+#
+# 已整合进 js/topics.js / Already wired into js/topics.js:
+#   超分辨率, 去模糊, 去雾, 计算摄影, 图像信号处理, 去马赛克,
+#   色调映射, 色彩校正, 白平衡, 高动态范围, 低级视觉,
+#   image signal processing, camera pipeline, raw image, raw pipeline,
+#   bayer pattern, demosaicking, demosaic, tone mapping, color correction,
+#   exposure fusion, radiometric calibration, burst photography,
+#   high dynamic range, exposure bracketing
+#
+# ⚠️ 已实测有问题、故意未采用的词 / Measured unreliable, deliberately omitted:
+#
+#   ISP
+#     30 次命中全部为假阳性 —— 作为子串出现在 disparity / display / disparities。
+#     词边界匹配下命中 0。正确写法:image signal processing。
+#     All 30 hits were false positives (matched inside "disparity"/"display").
+#
+#   SR
+#     两字母缩写,会匹配大量无关缩写。Too short, collides with other acronyms.
+#
+#   denoising / 去噪(单独使用)
+#     扩散模型的采样过程也叫「去噪」,会带进大量生成模型论文。
+#     2026-10-14 实测:8 篇命中中 5 篇是生成模型;中文摘要含「去噪」的 5 篇里
+#     3 篇是扩散模型语境、0 篇是纯图像去噪。
+#     处理:js/topics.js 仅当文中同时出现成像词汇时,才计入去噪主题。
+#     "Denoising" is also the sampling step of diffusion models.
+#
+#   low-level vision / 低级视觉
+#     实测命中 0 —— 论文标题摘要几乎不这么写。0 hits in practice.
+#
+#   raw2rgb / raw-to-rgb
+#     实测命中 0 —— 论文中罕见。0 hits.
+#
+#   photometric
+#     单独使用过宽(photometric loss 等),已限定为 photometric stereo。
+#
+# 想调整排序 → 改 js/topics.js 的 TOPIC_GROUPS,刷新即可。
+# To tune ranking, edit TOPIC_GROUPS in js/topics.js and reload.
+
+# ---- 原始清单,仅供参考 / original list, reference only ----
+
 low-level vision
 image enhancement
 ISP
@@ -12,8 +60,6 @@ SR
 demosaicking
 demosaic
 deblurring
-dehaZing
-dehaZing
 dehazing
 tone mapping
 tone-mapping
