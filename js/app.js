@@ -1330,9 +1330,27 @@ function renderPapers() {
     });
   }
   
+  // 主题加权：low-level vision / 计算摄像相关论文排在前面
+  // Topic boost: surface low-level vision and computational photography work.
+  // This is a separate pass from the keyword/author sorting above so the two
+  // features do not interfere. Nothing is hidden -- matching papers only move
+  // to the top, and the sort is stable for everything else.
+  if (typeof matchTopics === 'function') {
+    filteredPapers.forEach(paper => {
+      paper.topics = matchTopics(paper);
+      paper.isTopicPaper = paper.topics.length > 0;
+    });
+
+    // Array.prototype.sort is stable in modern engines, so papers within each
+    // group keep the order established by the previous sorting steps.
+    filteredPapers.sort((a, b) => {
+      if (a.isTopicPaper === b.isTopicPaper) return 0;
+      return a.isTopicPaper ? -1 : 1;
+    });
+  }
+
   // 存储当前过滤后的论文列表，用于箭头键导航
-  currentFilteredPapers = [...filteredPapers];
-  
+  currentFilteredPapers = [...filteredPapers];  
   if (filteredPapers.length === 0) {
     container.innerHTML = `
       <div class="loading-container">
