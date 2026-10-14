@@ -42,6 +42,19 @@ jobs:
           ref: data
           fetch-depth: 0
 
+      # The data branch holds data only -- no pyproject.toml, no ai/ -- so the
+      # code has to be overlaid from main before anything can run. Checking out
+      # main first and then the data branch would not work: the second checkout
+      # would replace the working tree rather than merge into it.
+      - name: Overlay code from main
+        run: |
+          git fetch origin main --depth 1
+          # Use FETCH_HEAD: the data-branch checkout is a single-branch clone,
+          # so 'origin/main' is not a valid ref even after fetching.
+          git checkout FETCH_HEAD -- pyproject.toml uv.lock ai tools
+          echo "已从 main 取回代码 / code overlaid from main"
+          ls pyproject.toml uv.lock ai/enhance.py tools/backfill_arxiv.py
+
       - name: Install dependencies
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -126,10 +139,18 @@ jobs:
           LANGUAGE="${{ vars.LANGUAGE }}"
           LANGUAGE="${LANGUAGE:-Chinese}"
 
+          # The overlay step staged ai/, tools/, pyproject.toml, etc. Unstage
+          # everything and re-add only data, otherwise the code would be
+          # committed onto the data branch.
+          git reset -q
+
           # Rebuild the file list exactly as the daily workflow does, so newly
           # enhanced days appear in the site's date picker.
           ls data/*.jsonl | sed 's|data/||' | sort > assets/file-list.txt
           git add data/*.jsonl assets/file-list.txt
+
+          echo "即将提交 / staged:"
+          git diff --staged --name-only | head -20
 
           if git diff --staged --quiet; then
             echo "没有变更需要提交 / No changes to commit"
