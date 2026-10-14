@@ -238,11 +238,14 @@
     padding: 0 !important;
     font-size: 18px !important;
     font-weight: 600 !important;
-    /* Center the month + year group as one unit and share a single baseline */
+    /* Two evenly split halves: the year occupies the left half and the month
+       the right half, each centered within its own half. flatpickr emits
+       month-then-year in the DOM, so `order` swaps them visually without
+       touching JS. */
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 8px !important;
+    gap: 0 !important;
     line-height: 1.5 !important;
     height: auto !important;
     color: var(--text-color) !important;
@@ -262,29 +265,41 @@
     margin: 0 !important;
 }
 
+/* Left half: the year. */
+.flatpickr-current-month .numInputWrapper {
+    order: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    /* Equal halves give the two labels identical, evenly spaced centers.
+       Must stay auto-width: flatpickr defaults this to width:100%, which
+       would let the input swallow the whole row. */
+    flex: 1 1 50% !important;
+    width: auto !important;
+    height: auto !important;
+}
+
+/* Right half: the month. */
 .flatpickr-current-month .flatpickr-monthDropdown-months {
-    padding: 0 4px 0 0 !important;
+    order: 2 !important;
+    flex: 1 1 50% !important;
+    padding: 0 !important;
     background: transparent !important;
     border: none !important;
     /* Keep the native chevron: it is the affordance that marks this as a
-       dropdown, and hiding it makes the month look like static text. */
+       dropdown, and hiding it makes the month look like static text.
+       Native selects always draw that chevron at the box's trailing edge, so
+       letting the box span the whole half strands the arrow far from the
+       label. Size the box to its content instead, then center the box. */
     appearance: auto !important;
     -webkit-appearance: menulist !important;
+    width: fit-content !important;
+    margin: 0 auto !important;
     text-align: center !important;
 }
 
-.flatpickr-current-month .numInputWrapper {
-    display: inline-flex !important;
-    align-items: center !important;
-    /* Must stay a tight box: flatpickr defaults this to width:100%, which
-       stretches the year input across the row and breaks the centering. */
-    width: auto !important;
-    height: auto !important;
-    flex: 0 0 auto !important;
-}
-
 /* Flatpickr shows spinner arrows on hover that add asymmetric width and push
-   the year off the shared center line; the year is a 4-digit field, so drop it. */
+   the year off its center line; the year is a 4-digit field, so drop it. */
 .flatpickr-current-month .numInputWrapper span.arrowUp,
 .flatpickr-current-month .numInputWrapper span.arrowDown {
     display: none !important;
