@@ -1,0 +1,18 @@
+name = "arxiv-content-filter"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# Deployed at: https://arxiv-content-filter.<your-subdomain>.workers.dev
+# Cloudflare assigns the subdomain from your account.
+
+[vars]
+# Extra comma-separated terms to treat as sensitive, beyond the built-ins.
+BLOCK_TERMS = ""
+
+# Leave empty to allow anyone who knows the URL (fine for a public filter).
+# Set a random string to require an X-Filter-Token header -- you then also set
+# FILTER_TOKEN as a GitHub secret (see README).
+REQUIRE_TOKEN = ""
+
+# "true" echoes which terms matched. Leave false on a public deployment.
+DEBUG = "false"

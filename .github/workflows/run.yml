@@ -122,6 +122,20 @@ jobs:
         export LANGUAGE="${{ vars.LANGUAGE }}"
         export MODEL_NAME="${{ vars.MODEL_NAME }}"
         
+        # Content filter endpoint. Empty FILTER_URL falls back to upstream's
+        # public worker, so leaving this unset preserves the original
+        # behaviour. Point it at your own deployment to drop that dependency.
+        export FILTER_URL="${{ secrets.FILTER_URL }}"
+        export FILTER_URL_DISABLED="${{ vars.FILTER_URL_DISABLED }}"
+        export FILTER_TOKEN="${{ secrets.FILTER_TOKEN }}"
+        if [ -n "$FILTER_URL" ]; then
+          echo "内容过滤服务 / Content filter: $FILTER_URL"
+        elif [ -n "$FILTER_URL_DISABLED" ]; then
+          echo "内容过滤已禁用 / Content filter: disabled"
+        else
+          echo "内容过滤服务 / Content filter: (默认上游服务)"
+        fi
+        
         # Papers are independent, so process them concurrently. 8 is a
         # deliberately conservative default: DeepSeek allows 2500 concurrent
         # requests on deepseek-flash, but each paper also triggers a content
