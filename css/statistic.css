@@ -239,13 +239,15 @@
     font-size: 18px !important;
     font-weight: 600 !important;
     /* Two evenly split halves: the year occupies the left half and the month
-       the right half, each centered within its own half. flatpickr emits
-       month-then-year in the DOM, so `order` swaps them visually without
-       touching JS. */
-    display: flex !important;
+       the right half, each centered within its own half. Grid (not flex): a
+       flex item with flex-grow gets stretched to the full half, which strands
+       the month select's chevron at the cell edge; grid items shrink-wrap and
+       center inside their 1fr cells instead. flatpickr emits month-then-year
+       in the DOM, so `order` swaps them visually without touching JS. */
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
     align-items: center !important;
-    justify-content: center !important;
-    gap: 0 !important;
+    justify-items: center !important;
     line-height: 27px !important;
     /* Explicit 27px row: the text and the absolutely-positioned prev/next
        arrows must center against the SAME box, otherwise the arrows land
@@ -274,10 +276,10 @@
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    /* Equal halves give the two labels identical, evenly spaced centers.
-       Must stay auto-width: flatpickr defaults this to width:100%, which
-       would let the input swallow the whole row. */
-    flex: 1 1 50% !important;
+    /* Shrink-wrap around the 4-digit input; justify-items on the grid row
+       centers the box in the left cell. Must stay auto-width: flatpickr
+       defaults this to width:100%, which would let the input swallow the
+       whole row. */
     width: auto !important;
     /* Fixed height (not auto): the right-hand month falls back to a CJK font
        whose taller line box would otherwise stretch the whole row. */
@@ -288,29 +290,35 @@
 .flatpickr-current-month .flatpickr-monthDropdown-months {
     order: 2 !important;
     flex: 1 1 50% !important;
-    padding: 0 !important;
-    background: transparent !important;
+    padding: 0 18px 0 0 !important;
+    background-color: transparent !important;
+    /* Custom chevron replacing the native one: with menulist appearance the
+       select renders in an OS-controlled font/size and parks its arrow at the
+       box's trailing edge, which is why 「十月」 never matched 「2026」 and the
+       ˅ floated low and far from the label. appearance:none makes the select
+       a normal text box, so it takes the same family/size/weight as the year
+       and the chevron becomes a background glyph glued to the text. */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%231e293b' stroke-opacity='.65' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 2px center !important;
     border: none !important;
-    /* Inter ships no CJK glyphs, so 「十月」 is drawn by a system fallback that
-       renders noticeably larger than Inter at the same nominal size (measured:
-       16.76px vs 13.45px of ink at 18px). Give an explicit CJK stack so the
-       fallback is predictable, and trim the size to match the Latin year.
-       (Not `inherit`: listing families after it would be invalid CSS.) */
+    /* Inter ships no CJK glyphs, so 「十月」 falls back to a system CJK font;
+       name the stack explicitly so the fallback is predictable. Size and
+       weight stay inherited (18px/600), identical to the year. */
     font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC",
                  "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC",
                  sans-serif !important;
-    font-size: 15.5px !important;
-    line-height: 27px !important;
-    /* Keep the native chevron: it is the affordance that marks this as a
-       dropdown, and hiding it makes the month look like static text.
-       Native selects always draw that chevron at the box's trailing edge, so
-       letting the box span the whole half strands the arrow far from the
-       label. Size the box to its content instead, then center the box. */
-    appearance: auto !important;
-    -webkit-appearance: menulist !important;
+    /* Shrink-wrap the box around the label + chevron; the grid row centers
+       the box within the right cell. */
+    appearance: none !important;
+    -webkit-appearance: none !important;
     width: fit-content !important;
-    margin: 0 auto !important;
     text-align: center !important;
+    cursor: pointer !important;
+}
+
+:root[data-theme="dark"] .flatpickr-current-month .flatpickr-monthDropdown-months {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23e6e9f2' stroke-opacity='.8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
 }
 
 /* Flatpickr shows spinner arrows on hover that add asymmetric width and push
