@@ -8,6 +8,7 @@ from queue import Queue
 from threading import Lock
 import dotenv
 import argparse
+import requests
 from tqdm import tqdm
 
 from pydantic import ValidationError
@@ -20,7 +21,13 @@ from langchain.prompts import (
 )
 from structure import Structure
 from content_filter import is_sensitive
-from runtime import build_chat_openai_kwargs, raise_if_processing_failed
+from runtime import (
+    build_chat_openai_kwargs,
+    invoke_with_retry,
+    describe_failure,
+    retry_config,
+    raise_if_processing_failed,
+)
 
 if os.path.exists('.env'):
     dotenv.load_dotenv()
@@ -33,6 +40,141 @@ def parse_args():
     parser.add_argument("--data", type=str, required=True, help="jsonline data file")
     parser.add_argument("--max_workers", type=int, default=1, help="Maximum number of parallel workers")
     return parser.parse_args()
+
+# A backslash inside a JSON string may only start one of these escapes.
+# Anything else (e.g. LaTeX \mathcal) is invalid JSON and must be repaired.
+_VALID_JSON_ESCAPES = set('"\\/bfnrtu')
+
+_TRAILING_COMMA_RE = re.compile(r',(\s*[}\]])')
+
+
+def _extract_json_object_text(text: str) -> str:
+    """Return the outermost {...} span, tolerating prose before/after it.
+
+    Scanning for a balanced object (rather than trusting LangChain's exact
+    phrasing) means a model that wraps its JSON in commentary, or nests
+    objects inside strings, is still recovered in full instead of being
+    truncated at the first brace.
+    """
+    start = text.find('{')
+    if start == -1:
+        return ""
+    depth = 0
+    in_string = False
+    escaped = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == '\\':
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == '{':
+            depth += 1
+        elif char == '}':
+            depth -= 1
+            if depth == 0:
+                return text[start:index + 1]
+    # Unbalanced (response truncated mid-object): return the remainder so the
+    # caller can still attempt a repair instead of losing everything.
+    return text[start:]
+
+
+def _repair_backslash_escapes(text: str) -> str:
+    """Escape only the backslashes that are not already valid JSON escapes.
+
+    The model writes LaTeX such as \\mathcal or \\alpha with a single
+    backslash. Those are invalid JSON escapes, so they must be doubled -- but
+    a blanket ``replace('\\\\', '\\\\\\\\')`` also corrupts escapes that were
+    already correct (``\\\\``, ``\\"``, ``\\n``), which is exactly what made
+    the original recovery path fail on real abstracts and publish placeholders.
+    """
+    out = []
+    index = 0
+    length = len(text)
+    while index < length:
+        char = text[index]
+        if char != '\\':
+            out.append(char)
+            index += 1
+            continue
+        # A backslash at the very end cannot start a valid escape.
+        following = text[index + 1] if index + 1 < length else ''
+        if following in _VALID_JSON_ESCAPES:
+            out.append(char)
+            out.append(following)
+            index += 2
+            # \uXXXX needs its four hex digits consumed as-is.
+            if following == 'u':
+                digits = text[index:index + 4]
+                if len(digits) == 4 and all(c in '0123456789abcdefABCDEF' for c in digits):
+                    out.append(digits)
+                    index += 4
+            continue
+        # Invalid escape: neutralise it by escaping the backslash itself.
+        out.append('\\\\')
+        index += 1
+    return ''.join(out)
+
+
+def recover_partial_ai_fields(error_msg: str) -> dict:
+    """Best-effort salvage of the model's fields from an unparseable response.
+
+    Pure and side-effect free: it takes the OutputParserException text and
+    returns whatever fields could be recovered, or ``{}`` when nothing could
+    be. It never raises, so a single malformed response degrades to the
+    default placeholders instead of aborting the whole batch.
+
+    Deliberately touches neither the network nor ChatOpenAI, so it is
+    importable and testable without API keys or a live model.
+    """
+    if not error_msg:
+        return {}
+
+    # Prefer the region after LangChain's marker, but fall back to the whole
+    # message so a differently-worded parser error is still recoverable.
+    marker = "Function Structure arguments:"
+    candidate = error_msg.split(marker, 1)[1] if marker in error_msg else error_msg
+    candidate = candidate.split('are not valid JSON')[0]
+
+    json_text = _extract_json_object_text(candidate)
+    if not json_text:
+        return {}
+
+    for attempt in (
+        lambda: json.loads(json_text),
+        lambda: json.loads(_repair_backslash_escapes(json_text)),
+        lambda: json.loads(
+            _TRAILING_COMMA_RE.sub(r'\1', _repair_backslash_escapes(json_text))
+        ),
+    ):
+        try:
+            parsed = attempt()
+        except Exception:
+            continue
+        if isinstance(parsed, dict):
+            return parsed
+    return {}
+
+
+def _unrecoverable_message(item_id: str, error: BaseException, source: str) -> str:
+    """Message for a response whose fields could not be recovered at all.
+
+    Publishing the default placeholder strings instead would render as a real
+    summary on the site (to_md/convert.py checks key PRESENCE only), so an
+    unrecoverable response must fail the paper -- the same contract
+    raise_if_processing_failed enforces for every other failure.
+    """
+    return (
+        f"{describe_failure(item_id, error)} "
+        f"[{source}: recovered no fields, refusing to publish placeholder text]"
+    )
+
 
 def process_single_item(chain, item: Dict, language: str) -> Dict:
     def check_github_code(content: str) -> Dict:
@@ -102,27 +244,41 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
     }
     
     try:
-        response: Structure = chain.invoke({
-            "language": language,
-            "content": item['summary']
-        })
+        # Transient provider failures (HTTP 429, 5xx, timeouts, connection
+        # resets, "overloaded") are expected when 8 workers hit ~1000 papers.
+        # invoke_with_retry retries those with bounded exponential backoff +
+        # jitter and raises everything else (auth, quota, model-not-found,
+        # context-length) immediately. A retried-but-successful call returns a
+        # normal Structure, so no placeholder text is produced.
+        response: Structure = invoke_with_retry(
+            chain,
+            {
+                "language": language,
+                "content": item['summary']
+            },
+            on_retry=lambda attempt, delay, error: print(
+                f"Retry {attempt} for {item.get('id', 'unknown')} in {delay:.1f}s "
+                f"after {type(error).__name__}: {error}",
+                file=sys.stderr,
+            ),
+        )
         item['AI'] = response.model_dump()
     except langchain_core.exceptions.OutputParserException as e:
-        # 尝试从错误信息中提取 JSON 字符串并修复
-        error_msg = str(e)
-        partial_data = {}
-        
-        if "Function Structure arguments:" in error_msg:
-            try:
-                # 提取 JSON 字符串
-                json_str = error_msg.split("Function Structure arguments:", 1)[1].strip().split('are not valid JSON')[0].strip()
-                # 预处理 LaTeX 数学符号 - 使用四个反斜杠来确保正确转义
-                json_str = json_str.replace('\\', '\\\\')
-                # 尝试解析修复后的 JSON
-                partial_data = json.loads(json_str)
-            except Exception as json_e:
-                print(f"Failed to parse JSON for {item.get('id', 'unknown')}: {json_e}", file=sys.stderr)
-        
+        # The model emitted something that is not valid JSON -- typically an
+        # abstract containing LaTeX such as \mathcal, whose single backslash is
+        # an invalid JSON escape. Salvage whatever fields we can (see
+        # recover_partial_ai_fields).
+        partial_data = recover_partial_ai_fields(str(e))
+
+        if not partial_data:
+            # Nothing readable: every field would be a placeholder string, which
+            # to_md/convert.py renders as a real summary. Fail the paper instead.
+            message = _unrecoverable_message(
+                item.get('id', 'unknown'), e, "OutputParserException"
+            )
+            print(f"Unrecoverable response: {message}", file=sys.stderr)
+            raise RuntimeError(message) from e
+
         # Merge partial data with defaults to ensure all fields exist
         item['AI'] = {**default_ai_fields, **partial_data}
         print(f"Using partial AI data for {item.get('id', 'unknown')}: {list(partial_data.keys())}", file=sys.stderr)
@@ -140,6 +296,15 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
             if isinstance(value, dict):
                 partial_data.update(value)
 
+        if not partial_data:
+            # No usable input on any error: the response carried nothing we can
+            # publish, so treat it as failed rather than emitting placeholders.
+            message = _unrecoverable_message(
+                item.get('id', 'unknown'), e, "ValidationError"
+            )
+            print(f"Unrecoverable response: {message}", file=sys.stderr)
+            raise RuntimeError(message) from e
+
         item['AI'] = {**default_ai_fields, **partial_data}
         missing = [f for f in default_ai_fields if f not in partial_data]
         print(
@@ -148,8 +313,13 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
             file=sys.stderr,
         )
     except Exception as e:
-        print(f"Unexpected error for {item.get('id', 'unknown')}: {e}", file=sys.stderr)
-        raise RuntimeError(f"AI request failed for {item.get('id', 'unknown')}") from e
+        # Actionable message: paper id + exception type + short diagnosis
+        # (e.g. "rate limited after 4 retries" vs "auth failure"). The
+        # `N paper(s) failed` contract in raise_if_processing_failed is
+        # unchanged.
+        message = describe_failure(item.get('id', 'unknown'), e)
+        print(f"Unexpected error: {message}", file=sys.stderr)
+        raise RuntimeError(message) from e
     
     # Final validation to ensure all required fields exist
     for field in default_ai_fields.keys():
@@ -196,6 +366,16 @@ def process_all_items(data: List[Dict], model_name: str, language: str, max_work
     ])
 
     chain = prompt_template | llm
+
+    # Retry policy is env-tunable without a code change (mirrors MAX_TOKENS):
+    #   AI_MAX_RETRIES (default 3), AI_RETRY_BASE_DELAY (2s),
+    #   AI_RETRY_MAX_DELAY (30s), AI_RETRY_JITTER (0.5).
+    retry_settings = retry_config()
+    print(
+        "Retry policy: max_retries={max_retries} base_delay={base_delay}s "
+        "max_delay={max_delay}s jitter={jitter}".format(**retry_settings),
+        file=sys.stderr,
+    )
     
     # 使用线程池并行处理
     processed_data = [None] * len(data)  # 预分配结果列表

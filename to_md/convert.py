@@ -3,6 +3,27 @@ import argparse
 import os
 from itertools import count
 
+# Placeholder strings ai/enhance.py writes when enhancement could not produce a
+# real summary. enhance.py now fails the run instead of publishing these, so
+# this list is defence-in-depth: any future path that reintroduces them must
+# skip the paper rather than render "Summary generation failed" as a summary.
+PLACEHOLDER_AI_VALUES = frozenset({
+    "Summary generation failed",
+    "Motivation analysis unavailable",
+    "Method extraction failed",
+    "Result analysis unavailable",
+    "Conclusion extraction failed",
+})
+
+
+def has_placeholder_values(ai_data: dict) -> bool:
+    """True when any AI field still carries an enhance.py placeholder."""
+    return any(
+        isinstance(value, str) and value.strip() in PLACEHOLDER_AI_VALUES
+        for value in ai_data.values()
+    )
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", type=str, help="Path to the jsonline file")
@@ -50,6 +71,15 @@ if __name__ == "__main__":
                 required_fields = ['tldr', 'motivation', 'method', 'result', 'conclusion']
                 if not all(field in ai_data for field in required_fields):
                     print(f"Skipping item '{item.get('title', 'Unknown')}' due to incomplete AI fields")
+                    continue
+
+                # Key presence is not enough: a placeholder value means the
+                # summary failed and must not be rendered as a real one.
+                if has_placeholder_values(ai_data):
+                    print(
+                        f"Skipping item '{item.get('title', 'Unknown')}' "
+                        f"due to placeholder AI values (enhancement failed)"
+                    )
                     continue
                 
                 papers.append(
