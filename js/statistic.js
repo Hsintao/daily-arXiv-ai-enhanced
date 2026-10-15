@@ -375,15 +375,29 @@ async function loadPapersByDateRange(startDate, endDate) {
       
       // 定义停用词
       const stopWords = new Set([
-        'the', 'is', 'at', 'which', 'and', 'or', 'in', 'to', 'for', 'of', 
-        'with', 'by', 'on', 'this', 'that', 'our', 'method', 'based', 
+        'the', 'is', 'at', 'which', 'and', 'or', 'in', 'to', 'for', 'of',
+        'with', 'by', 'on', 'this', 'that', 'our', 'method', 'based',
         'towards', 'via', 'multi', 'text', 'using', 'aware', 'data', 'from',
-        'paper', 'propose', 'proposed', 'approach', 'model', 'system', 
-        'framework', 'results', 'show', 'demonstrates', 'experimental', 
+        'paper', 'propose', 'proposed', 'approach', 'model', 'system',
+        'framework', 'results', 'show', 'demonstrates', 'experimental',
         'experiments', 'evaluation', 'performance', 'state', 'art', 'sota',
-        'dataset', 'datasets', 'task', 'tasks', 'learning', 'neural', 
-        'network', 'networks', 'deep', 'machine', 'artificial', 'intelligence', 
-        'ai', 'ml', 'dl'
+        'dataset', 'datasets', 'task', 'tasks', 'learning', 'neural',
+        'network', 'networks', 'deep', 'machine', 'artificial', 'intelligence',
+        'ai', 'ml', 'dl',
+        // 学术标题套话：单独出现时不携带主题信息
+        'study', 'studies', 'analysis', 'analyses', 'empirical', 'survey',
+        'review', 'case', 'perspective', 'perspectives', 'rethinking',
+        'revisiting', 'revisit', 'exploration', 'exploring', 'understanding',
+        'toward', 'beyond', 'new', 'novel', 'improving', 'improve',
+        'enhancing', 'enhance', 'investigating',
+        // 单词级泛词（短语中的成分不受影响：只有整项全是停用词才被过滤）
+        'end', 'only', 'memory', 'limit', 'limits', 'context', 'generation',
+        'training', 'structure', 'flow', 'word', 'words', 'image', 'images',
+        'models', 'methods', 'approaches', 'systems', 'frameworks', 'language',
+        'knowledge', 'key', 'general', 'simple', 'all', 'one', 'two', 'make',
+        'makes', 'making', 'good', 'better', 'best', 'real', 'world',
+        // 常被 compromise 误标为名词的形容词
+        'efficient', 'effective', 'robust', 'fast', 'scalable',
       ]);
       
       // 过滤停用词和短词
