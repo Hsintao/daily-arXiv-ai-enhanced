@@ -69,7 +69,38 @@ jobs:
         
         echo "crawl_date=$today" >> $GITHUB_OUTPUT
         echo "爬取完成 / Crawling completed"
-        
+
+    - name: Restore recent history for dedup
+      run: |
+        echo "恢复最近7天历史数据用于去重... / Restoring last 7 days of history for deduplication..."
+
+        # check_stats.py deduplicates today's crawl against ../data/<date>.jsonl
+        # for the past 7 days, but data/ only exists on the data branch -- a
+        # main checkout has no history, so the dedup library was always empty
+        # and every paper was declared new. Restore the recent raw files from
+        # the data branch so duplicates are actually removed before the
+        # expensive AI enhancement step.
+        mkdir -p data
+        if git ls-remote --heads origin data | grep -q .; then
+          git fetch --depth=1 origin data
+          restored=0
+          for i in $(seq 1 7); do
+            d=$(date -u -d "$i days ago" "+%Y-%m-%d")
+            # Write via a temp file: a plain redirect would leave an empty
+            # data/<date>.jsonl behind when the day does not exist, and that
+            # empty file would later be committed to the data branch.
+            if git show "FETCH_HEAD:data/${d}.jsonl" > "data/${d}.jsonl.tmp" 2>/dev/null; then
+              mv "data/${d}.jsonl.tmp" "data/${d}.jsonl"
+              restored=$((restored + 1))
+            else
+              rm -f "data/${d}.jsonl.tmp"
+            fi
+          done
+          echo "已恢复 $restored 个历史文件 / Restored $restored historical file(s)"
+        else
+          echo "data 分支不存在（首次运行），跳过 / data branch missing (first run), skipping"
+        fi
+
     - name: Check for duplicates
       id: dedup_check
       run: |
@@ -189,13 +220,6 @@ jobs:
         fi
         echo "Markdown转换完成 / Markdown conversion completed"
         
-    - name: Update file list
-      if: steps.dedup_check.outputs.has_new_content == 'true'
-      run: |
-        echo "更新文件列表... / Updating file list..."
-        ls data/*.jsonl | sed 's|data/||' > assets/file-list.txt
-        echo "文件列表更新完成 / File list updated"
-
     - name: Generate password hash and inject into config
       if: steps.dedup_check.outputs.has_new_content == 'true'
       run: |
@@ -348,11 +372,10 @@ jobs:
         
         # 创建临时目录保存数据文件 / Create temporary directory to save data files
         mkdir -p /tmp/data_files/data
-        mkdir -p /tmp/data_files/assets
-        
+
         # 复制数据文件到临时目录 / Copy data files to temporary directory
+        # （assets/file-list.txt 不再在 main 上生成，切到 data 分支后基于完整数据重建）
         cp -r data/* /tmp/data_files/data/ 2>/dev/null || true
-        cp assets/file-list.txt /tmp/data_files/assets/ 2>/dev/null || true
         
         echo "数据文件已保存到临时目录 / Data files saved to temporary directory"
 
@@ -396,8 +419,14 @@ jobs:
         # 确保目录存在 / Ensure directories exist
         mkdir -p data assets
         cp -r /tmp/data_files/data/* data/ 2>/dev/null || true
-        cp /tmp/data_files/assets/file-list.txt assets/ 2>/dev/null || true
-        
+
+        # 在 data 分支上基于完整的 data/ 目录重建文件列表 / Rebuild the file
+        # list from the complete data/ directory here on the data branch. The
+        # old "Update file list" step ran on the main checkout, where data/
+        # only holds today's files -- committing that list would have wiped
+        # every historical entry from the site's date picker.
+        ls data/*.jsonl | sed 's|data/||' | sort > assets/file-list.txt
+
         # 只添加数据文件 / Only add data files
         git add data/* 2>/dev/null || true
         git add assets/file-list.txt 2>/dev/null || true
