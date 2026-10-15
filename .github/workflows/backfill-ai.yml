@@ -31,9 +31,16 @@ on:
         required: false
         default: "8"
 
+# 与 daily 工作流共用同一分组：两边都会推送 data 分支，排队避免互相冲突。
+concurrency:
+  group: daily-arxiv-data
+  cancel-in-progress: false
+
 jobs:
   backfill:
     runs-on: ubuntu-latest
+    # 默认一次处理一天；ALL_DAYS 时逐日处理，给足余量但不做无界等待。
+    timeout-minutes: 300
 
     steps:
       - name: Checkout data branch

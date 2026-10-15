@@ -537,6 +537,12 @@ def build_chat_openai_kwargs(model_name: str, base_url: str, api_key: str) -> di
         "base_url": base_url,
         "api_key": api_key,
     }
+    # Per-request timeout. The SDK default is 600s, so a hung connection would
+    # hold a worker for 10 minutes before our retry policy even sees it; 300s
+    # is generous for a structured response capped by MAX_TOKENS.
+    kwargs["timeout"] = _env_float(
+        "AI_REQUEST_TIMEOUT", 300.0, minimum=1.0, maximum=1800.0
+    )
     hostname = urlparse(base_url).hostname or ""
     # These providers default to thinking mode, which rejects the
     # function_calling tool_choice used by with_structured_output.
