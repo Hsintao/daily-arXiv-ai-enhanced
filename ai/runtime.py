@@ -546,6 +546,11 @@ def build_chat_openai_kwargs(model_name: str, base_url: str, api_key: str) -> di
 
 
 def raise_if_processing_failed(errors: list[str]) -> None:
-    """Make a failed AI batch fail the workflow instead of publishing placeholders."""
+    """Fail the workflow when every paper in the batch failed to enhance.
+
+    Per-paper failures are skipped by process_all_items; this is reserved for
+    the all-failed case, which means something systemic (auth, quota, provider
+    outage) and must not be published as an empty day.
+    """
     if errors:
         raise RuntimeError(f"{len(errors)} paper(s) failed AI enhancement: {errors[0]}")

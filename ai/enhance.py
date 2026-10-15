@@ -167,8 +167,9 @@ def _unrecoverable_message(item_id: str, error: BaseException, source: str) -> s
 
     Publishing the default placeholder strings instead would render as a real
     summary on the site (to_md/convert.py checks key PRESENCE only), so an
-    unrecoverable response must fail the paper -- the same contract
-    raise_if_processing_failed enforces for every other failure.
+    unrecoverable response must fail the paper. process_all_items then drops
+    the failed paper from the published file (only an all-failed batch fails
+    the run).
     """
     return (
         f"{describe_failure(item_id, error)} "
@@ -401,8 +402,26 @@ def process_all_items(data: List[Dict], model_name: str, language: str, max_work
                 print(f"Item at index {idx} generated an exception: {e}", file=sys.stderr)
                 processing_errors.append(str(e))
 
-    raise_if_processing_failed(processing_errors)
-    
+    # A failed paper no longer fails the batch: its slot stays None and main()
+    # drops None entries when writing the result file, so one bad response
+    # cannot throw away hundreds of good summaries. The exception to this
+    # leniency: if EVERY paper failed, something systemic is wrong (auth,
+    # quota, provider outage) and the run must fail loudly instead of
+    # publishing an empty day.
+    if processing_errors:
+        succeeded = sum(1 for result in processed_data if result is not None)
+        if succeeded == 0:
+            raise_if_processing_failed(processing_errors)
+        print(
+            f"{len(processing_errors)} paper(s) failed and will be skipped; "
+            f"publishing the remaining {succeeded}:",
+            file=sys.stderr,
+        )
+        for error in processing_errors[:10]:
+            print(f"  - {error}", file=sys.stderr)
+        if len(processing_errors) > 10:
+            print(f"  ... and {len(processing_errors) - 10} more", file=sys.stderr)
+
     return processed_data
 
 def main():

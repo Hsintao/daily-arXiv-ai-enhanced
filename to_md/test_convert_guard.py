@@ -1,9 +1,9 @@
 """Tests for the placeholder guard in the markdown renderer.
 
 ai/enhance.py writes these five placeholder strings when a summary could not
-be generated. It now fails the run instead of publishing them, so this guard is
-defence-in-depth: if any future path reintroduces a placeholder, the paper must
-be skipped rather than rendered as a real summary.
+be generated. It now skips such papers instead of publishing them, so this
+guard is defence-in-depth: if any future path reintroduces a placeholder, the
+paper must be skipped rather than rendered as a real summary.
 
 Run with:
     cd to_md && ../.venv/bin/python test_convert_guard.py

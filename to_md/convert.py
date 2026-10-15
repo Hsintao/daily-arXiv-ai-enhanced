@@ -4,7 +4,7 @@ import os
 from itertools import count
 
 # Placeholder strings ai/enhance.py writes when enhancement could not produce a
-# real summary. enhance.py now fails the run instead of publishing these, so
+# real summary. enhance.py now skips such papers instead of publishing these, so
 # this list is defence-in-depth: any future path that reintroduces them must
 # skip the paper rather than render "Summary generation failed" as a summary.
 PLACEHOLDER_AI_VALUES = frozenset({

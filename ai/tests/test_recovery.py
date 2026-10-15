@@ -270,11 +270,12 @@ class InvalidJsonSalvageTests(unittest.TestCase):
 
 
 class UnrecoverableResponseFailsThePaperTests(HermeticTestCase):
-    """An unrecoverable response must FAIL, not publish placeholder text.
+    """An unrecoverable response must FAIL the paper, not publish placeholders.
 
     to_md/convert.py checks key PRESENCE only, so a placeholder-filled dict
-    renders as a real summary on the live site while the batch reports success
-    -- the exact outcome raise_if_processing_failed exists to prevent.
+    renders as a real summary on the live site. Failing the paper prevents
+    that: the batch skips the bad paper and publishes the rest (only an
+    all-failed batch fails the whole run).
     """
 
     def test_output_parser_exception_recovering_nothing_fails_the_paper(self):
@@ -355,12 +356,12 @@ class UnrecoverableResponseFailsThePaperTests(HermeticTestCase):
         self.assertEqual("We minimize \\mathcal{L}", out["AI"]["tldr"])
         self.assertNotIn("\\\\", out["AI"]["tldr"])
 
-    def test_batch_with_one_unrecoverable_paper_fails_the_run(self):
-        """End-to-end: a healthy batch plus one bad paper must not report success.
+    def test_batch_with_one_unrecoverable_paper_skips_it_and_keeps_the_rest(self):
+        """End-to-end: one bad paper is skipped; the healthy ones are kept.
 
-        This is the release-blocking behavior: the paper is routed into
-        processing_errors, so raise_if_processing_failed raises
-        'N paper(s) failed AI enhancement'.
+        The failed paper's slot comes back None and main() drops None entries
+        when writing the result file, so one malformed response can no longer
+        throw away a whole batch of good summaries.
         """
         broken = langchain_core.exceptions.OutputParserException(
             "Function Structure arguments: {totally broken are not valid JSON"
@@ -396,15 +397,48 @@ class UnrecoverableResponseFailsThePaperTests(HermeticTestCase):
             )
             with unittest.mock.patch.dict("os.environ", env), \
                     unittest.mock.patch.object(enhance, "ChatOpenAI"):
+                out = enhance.process_all_items(data, "deepseek-flash", "Chinese", 1)
+        finally:
+            enhance.process_single_item = original
+
+        # The unrecoverable paper is skipped; both healthy papers survive.
+        self.assertIsNone(out[1])
+        self.assertEqual("t1", out[0]["AI"]["tldr"])
+        self.assertEqual("salvaged", out[2]["AI"]["tldr"])
+
+    def test_batch_where_every_paper_fails_still_fails_the_run(self):
+        """An all-failed batch is systemic, not bad luck -- fail loudly.
+
+        Auth/quota/provider outages hit every paper; publishing the result
+        would mean publishing an empty day that looks like success.
+        """
+        broken = langchain_core.exceptions.OutputParserException(
+            "Function Structure arguments: {totally broken are not valid JSON"
+        )
+        data = [
+            {"id": "bad.1", "summary": "a"},
+            {"id": "bad.2", "summary": "b"},
+        ]
+        chains = {"bad.1": RaisingChain(broken), "bad.2": RaisingChain(broken)}
+
+        original = enhance.process_single_item
+        env = {
+            "OPENAI_API_KEY": "test-key",
+            "OPENAI_BASE_URL": "https://api.deepseek.com/v1",
+            "MODEL_NAME": "deepseek-flash",
+        }
+        try:
+            enhance.process_single_item = (
+                lambda chain, item, language: original(chains[item["id"]], item, language)
+            )
+            with unittest.mock.patch.dict("os.environ", env), \
+                    unittest.mock.patch.object(enhance, "ChatOpenAI"):
                 with self.assertRaises(RuntimeError) as ctx:
                     enhance.process_all_items(data, "deepseek-flash", "Chinese", 1)
         finally:
             enhance.process_single_item = original
 
-        self.assertRegex(
-            str(ctx.exception), r"\d+ paper\(s\) failed", str(ctx.exception)
-        )
-        self.assertIn("1 paper(s) failed", str(ctx.exception))
+        self.assertIn("2 paper(s) failed", str(ctx.exception))
 
 
 if __name__ == "__main__":
